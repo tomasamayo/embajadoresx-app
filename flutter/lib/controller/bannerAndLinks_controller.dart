@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../model/bannerAndLinks_model.dart';
+import '../model/dashboard_model.dart';
 import '../model/marketing_material_model.dart';
 import '../service/api_service.dart';
 import '../utils/preference.dart';
@@ -34,6 +35,158 @@ class BannerAndLinksController extends GetxController {
   bool get isLoading => _isLoading;
   bool get isBannerAndLinksLoading => _isbannerAndLinksLoading;
   BannerAndLinksModel? get bannerAndLinksData => _bannerAndLinksModel;
+
+  List<BannerData> _dashboardFallbackItems() {
+    if (!Get.isRegistered<DashboardController>()) {
+      return <BannerData>[];
+    }
+
+    final DashboardModel? dashboard =
+        Get.find<DashboardController>().dashboardData;
+    if (dashboard == null) {
+      return <BannerData>[];
+    }
+
+    final List<BannerData> fallback = dashboard.data.marketTools
+        .map(_marketToolToBannerData)
+        .where((BannerData item) => item.title.isNotEmpty)
+        .toList();
+
+    final String storeUrl = dashboard.data.affiliateStoreUrl.trim();
+    final String resellerUrl = dashboard.data.uniqueResellerLink.trim();
+
+    if (storeUrl.isNotEmpty) {
+      fallback.insert(
+        0,
+        BannerData(
+          action_amount: "0",
+          action_count: 0,
+          aff_tool_type: "STORE_LINK",
+          click_amount: "0",
+          click_commision_you_will_get: "",
+          click_count: 0,
+          click_ratio: "",
+          clicks_commission: "",
+          description:
+              "Comparte tu tienda personalizada con un enlace directo.",
+          product_avg_rating: "0",
+          product_description:
+              "Tienda de afiliado lista para compartir con tu audiencia.",
+          product_short_description: "Tu escaparate oficial para conversiones.",
+          displayed_on_store: true,
+          fevi_icon: "",
+          general_amount: "0",
+          general_count: 0,
+          is_campaign_product: false,
+          price: "N/A",
+          product_sku: "store-link",
+          public_page: storeUrl,
+          sale_amount: "0",
+          sale_commision_you_will_get: "",
+          sale_count: 0,
+          sale_ratio: "",
+          sales_commission: "",
+          share_url: storeUrl,
+          title: "Tienda afiliada",
+          total_commission: "",
+          recurring: "",
+          id: "dashboard-store-link",
+        ),
+      );
+    }
+
+    if (resellerUrl.isNotEmpty && resellerUrl != storeUrl) {
+      fallback.insert(
+        0,
+        BannerData(
+          action_amount: "0",
+          action_count: 0,
+          aff_tool_type: "RESELLER_LINK",
+          click_amount: "0",
+          click_commision_you_will_get: "",
+          click_count: 0,
+          click_ratio: "",
+          clicks_commission: "",
+          description:
+              "Usa este enlace de reventa para activar tráfico y conversiones.",
+          product_avg_rating: "0",
+          product_description:
+              "Link principal del programa de afiliados listo para copiar y compartir.",
+          product_short_description:
+              "Enlace universal de afiliado para campañas rápidas.",
+          displayed_on_store: true,
+          fevi_icon: "",
+          general_amount: "0",
+          general_count: 0,
+          is_campaign_product: false,
+          price: "N/A",
+          product_sku: "reseller-link",
+          public_page: resellerUrl,
+          sale_amount: "0",
+          sale_commision_you_will_get: "",
+          sale_count: 0,
+          sale_ratio: "",
+          sales_commission: "",
+          share_url: resellerUrl,
+          title: "Enlace de afiliado",
+          total_commission: "",
+          recurring: "",
+          id: "dashboard-reseller-link",
+        ),
+      );
+    }
+
+    final List<BannerData> filtered = fallback.where((BannerData item) {
+      if (currentMarketView == "hot" && !item.isTopHot) {
+        return false;
+      }
+      if (searchQuery.isEmpty) {
+        return true;
+      }
+      final String needle = searchQuery.toLowerCase();
+      return item.title.toLowerCase().contains(needle) ||
+          item.description.toLowerCase().contains(needle) ||
+          item.product_short_description.toLowerCase().contains(needle);
+    }).toList();
+
+    return filtered;
+  }
+
+  BannerData _marketToolToBannerData(MarketTool tool) {
+    return BannerData(
+      action_amount: tool.actionAmount,
+      action_count: tool.actionCount,
+      aff_tool_type: tool.affToolType,
+      click_amount: tool.clickAmount,
+      click_commision_you_will_get: tool.clickCommisionYouWillGet,
+      click_count: tool.clickCount,
+      click_ratio: tool.clickRatio,
+      clicks_commission: tool.clicksCommission,
+      description: tool.description,
+      product_avg_rating: "0",
+      product_description: tool.description,
+      product_short_description: tool.description,
+      displayed_on_store: tool.displayedOnStore,
+      fevi_icon: tool.feviIcon,
+      general_amount: tool.generalAmount,
+      general_count: tool.generalCount,
+      is_campaign_product: tool.isCampaignProduct,
+      price: tool.price,
+      product_sku: tool.productSku,
+      public_page: tool.publicPage,
+      sale_amount: tool.saleAmount,
+      sale_commision_you_will_get: tool.saleCommisionYouWillGet,
+      sale_count: tool.saleCount,
+      sale_ratio: tool.saleRatio,
+      sales_commission: tool.salesCommission,
+      share_url: tool.shareUrl,
+      title: tool.title,
+      total_commission: tool.totalCommission,
+      recurring: tool.recurring,
+      id: tool.id,
+      isTopHot: tool.saleCount > 0 || tool.clickCount > 10,
+    );
+  }
 
   void toggleView() {
     isGridView = !isGridView;
@@ -229,20 +382,36 @@ class BannerAndLinksController extends GetxController {
           return;
         }
 
+        if (model.data.isEmpty) {
+          final List<BannerData> fallback = _dashboardFallbackItems();
+          if (fallback.isNotEmpty) {
+            updateBannerAndLinksData(BannerAndLinksModel(
+              status: true,
+              message: 'Fallback dashboard data',
+              data: fallback,
+            ));
+            return;
+          }
+        }
+
         updateBannerAndLinksData(model);
       } else {
+        final List<BannerData> fallback = _dashboardFallbackItems();
         updateBannerAndLinksData(BannerAndLinksModel(
-          status: false,
-          message: 'No data found',
-          data: [],
+          status: fallback.isNotEmpty,
+          message:
+              fallback.isNotEmpty ? 'Fallback dashboard data' : 'No data found',
+          data: fallback,
         ));
       }
     } catch (e) {
       debugPrint('Error loading banners: $e');
+      final List<BannerData> fallback = _dashboardFallbackItems();
       updateBannerAndLinksData(BannerAndLinksModel(
-        status: false,
-        message: 'Error occurred',
-        data: [],
+        status: fallback.isNotEmpty,
+        message:
+            fallback.isNotEmpty ? 'Fallback dashboard data' : 'Error occurred',
+        data: fallback,
       ));
     } finally {
       changeBannerAndLinksLoading(false);

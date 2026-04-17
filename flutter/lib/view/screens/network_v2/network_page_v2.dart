@@ -33,6 +33,11 @@ class _NetworkPageV2State extends State<NetworkPageV2> {
       builder: (NetworkController controller) {
         final NetworkModel? network = controller.networkData;
         final List<Userslist> users = network?.data.userslist ?? <Userslist>[];
+        final List<ReferredUsersTree> referred =
+            network?.data.referredUsersTree ?? <ReferredUsersTree>[];
+        final int directNodes = referred.length;
+        final int totalRows =
+            network?.data.pagination?.totalRows ?? users.length;
         return Scaffold(
           key: mainController.dashboardContextKey,
           backgroundColor: ExFuturisticTheme.bg,
@@ -97,6 +102,8 @@ class _NetworkPageV2State extends State<NetworkPageV2> {
                         sliver: SliverToBoxAdapter(
                           child: _NetworkHero(
                             totalUsers: controller.totalUsers.value,
+                            directNodes: directNodes,
+                            totalRows: totalRows,
                             rankName: network?.data.currentRankName ??
                                 'Nivel inicial',
                             infoText: network?.data.networkInfoText ??
@@ -111,6 +118,22 @@ class _NetworkPageV2State extends State<NetworkPageV2> {
                           ),
                         ),
                       ),
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                        sliver: SliverToBoxAdapter(
+                          child: _NetworkStatsStrip(
+                            directNodes: directNodes,
+                            paidSales: network
+                                    ?.data.referTotal.totalProductSale.paid
+                                    ?.toString() ??
+                                '0',
+                            pendingSales: network
+                                    ?.data.referTotal.totalProductSale.request
+                                    ?.toString() ??
+                                '0',
+                          ),
+                        ),
+                      ),
                       if (controller.isNetworkLoading)
                         const SliverFillRemaining(
                           hasScrollBody: false,
@@ -119,7 +142,7 @@ class _NetworkPageV2State extends State<NetworkPageV2> {
                                 color: ExFuturisticTheme.primary),
                           ),
                         )
-                      else if (users.isEmpty)
+                      else if (users.isEmpty && referred.isEmpty)
                         const SliverFillRemaining(
                           hasScrollBody: false,
                           child: Center(
@@ -135,6 +158,18 @@ class _NetworkPageV2State extends State<NetworkPageV2> {
                                 ),
                               ),
                             ),
+                          ),
+                        )
+                      else if (users.isEmpty)
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(18, 18, 18, 120),
+                          sliver: SliverList.separated(
+                            itemCount: referred.length,
+                            itemBuilder: (BuildContext context, int index) {
+                              return _ReferredNodeCard(node: referred[index]);
+                            },
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 12),
                           ),
                         )
                       else
@@ -164,6 +199,8 @@ class _NetworkPageV2State extends State<NetworkPageV2> {
 class _NetworkHero extends StatelessWidget {
   const _NetworkHero({
     required this.totalUsers,
+    required this.directNodes,
+    required this.totalRows,
     required this.rankName,
     required this.infoText,
     required this.clicks,
@@ -171,6 +208,8 @@ class _NetworkHero extends StatelessWidget {
   });
 
   final int totalUsers;
+  final int directNodes;
+  final int totalRows;
   final String rankName;
   final String infoText;
   final String clicks;
@@ -190,7 +229,7 @@ class _NetworkHero extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      '$totalUsers nodos detectados',
+                      '${totalUsers > 0 ? totalUsers : totalRows} nodos detectados',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 22,
@@ -229,6 +268,15 @@ class _NetworkHero extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          Text(
+            '$directNodes afiliados directos sincronizados en esta vista.',
+            style: const TextStyle(
+              color: Colors.white54,
+              fontSize: 12,
+              fontFamily: 'Poppins',
+            ),
+          ),
           const SizedBox(height: 16),
           Row(
             children: <Widget>[
@@ -251,6 +299,49 @@ class _NetworkHero extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _NetworkStatsStrip extends StatelessWidget {
+  const _NetworkStatsStrip({
+    required this.directNodes,
+    required this.paidSales,
+    required this.pendingSales,
+  });
+
+  final int directNodes;
+  final String paidSales;
+  final String pendingSales;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: _MiniStat(
+            label: 'Directos',
+            value: '$directNodes',
+            accent: ExFuturisticTheme.primary,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _MiniStat(
+            label: 'Pagadas',
+            value: paidSales,
+            accent: ExFuturisticTheme.cyan,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _MiniStat(
+            label: 'Pendientes',
+            value: pendingSales,
+            accent: ExFuturisticTheme.amber,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -299,6 +390,100 @@ class _MiniStat extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _ReferredNodeCard extends StatelessWidget {
+  const _ReferredNodeCard({required this.node});
+
+  final ReferredUsersTree node;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExGlassCard(
+      radius: 24,
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: ExFuturisticTheme.primary.withOpacity(0.14),
+            ),
+            child: Center(
+              child: Text(
+                _initials(node.title),
+                style: const TextStyle(
+                  color: ExFuturisticTheme.primary,
+                  fontWeight: FontWeight.w800,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  node.title.isEmpty ? 'Embajador EX' : node.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  node.email.isEmpty ? 'Sin email visible' : node.email,
+                  style: const TextStyle(
+                    color: Colors.white60,
+                    fontSize: 12,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              Text(
+                '\$${node.all_commition}',
+                style: const TextStyle(
+                  color: ExFuturisticTheme.primary,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${node.click} clics',
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _initials(String value) {
+    final List<String> parts = value
+        .split(RegExp(r'\s+'))
+        .where((String part) => part.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) {
+      return 'EX';
+    }
+    return parts.take(2).map((String part) => part[0]).join().toUpperCase();
   }
 }
 

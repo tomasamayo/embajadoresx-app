@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:showcaseview/showcaseview.dart';
 
 import 'package:affiliatepro_mobile/controller/dashboard_controller.dart';
 import 'package:affiliatepro_mobile/controller/main_controller.dart';
 import 'package:affiliatepro_mobile/model/dashboard_model.dart';
 import 'package:affiliatepro_mobile/model/user_model.dart' as user_model;
-import 'package:affiliatepro_mobile/view/screens/Menu/benefits/benefits.dart';
+import 'package:affiliatepro_mobile/view/screens/benefits_v2/benefits_page_v2.dart';
 import 'package:affiliatepro_mobile/view/screens/notifications/notifications.dart';
 import 'package:affiliatepro_mobile/view/screens/profile/profile.dart';
 import 'package:affiliatepro_mobile/view/theme/ex_futuristic_theme.dart';
@@ -127,6 +129,10 @@ class _DashboardPageV2State extends State<DashboardPageV2> {
                         ),
                         const SizedBox(height: 18),
                         _buildQuickActions(mainController),
+                        const SizedBox(height: 18),
+                        _buildLinkHub(dashboardData),
+                        const SizedBox(height: 18),
+                        _buildMarketHighlights(dashboardData),
                         const SizedBox(height: 18),
                         _buildRankModule(dashboardData, dashboardController),
                         const SizedBox(height: 18),
@@ -442,7 +448,7 @@ class _DashboardPageV2State extends State<DashboardPageV2> {
                 icon: Icons.workspace_premium_outlined,
                 label: 'Mi plan',
                 color: ExFuturisticTheme.amber,
-                onTap: () => Get.to(() => const BenefitsPage()),
+                onTap: () => Get.to(() => const BenefitsPageV2()),
               ),
             ),
             const SizedBox(width: 12),
@@ -457,6 +463,147 @@ class _DashboardPageV2State extends State<DashboardPageV2> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildLinkHub(DashboardModel? dashboardData) {
+    final String storeUrl = dashboardData?.data.affiliateStoreUrl.trim() ?? '';
+    final String resellerUrl =
+        dashboardData?.data.uniqueResellerLink.trim() ?? '';
+    final bool hasLinks = storeUrl.isNotEmpty || resellerUrl.isNotEmpty;
+
+    return ExGlassCard(
+      radius: 30,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            'Centro de enlaces',
+            style: ExFuturisticTheme.overline.copyWith(
+              color: ExFuturisticTheme.primarySoft,
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Activos principales para compartir',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Poppins',
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            hasLinks
+                ? 'Usa estos accesos para distribuir tu tienda y tu enlace afiliado sin salir del panel.'
+                : 'Aún no hay enlaces visibles. Cuando el backend los entregue, aparecerán aquí automáticamente.',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              height: 1.45,
+              fontFamily: 'Poppins',
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (hasLinks) ...<Widget>[
+            if (storeUrl.isNotEmpty)
+              _LinkActionCard(
+                title: 'Tienda afiliada',
+                subtitle: storeUrl,
+                icon: Icons.storefront_outlined,
+                accent: ExFuturisticTheme.primary,
+                onCopy: () => _copyLink(storeUrl),
+                onShare: () => Share.share(storeUrl),
+              ),
+            if (storeUrl.isNotEmpty && resellerUrl.isNotEmpty)
+              const SizedBox(height: 12),
+            if (resellerUrl.isNotEmpty)
+              _LinkActionCard(
+                title: 'Enlace de afiliado',
+                subtitle: resellerUrl,
+                icon: Icons.link_rounded,
+                accent: ExFuturisticTheme.cyan,
+                onCopy: () => _copyLink(resellerUrl),
+                onShare: () => Share.share(resellerUrl),
+              ),
+          ] else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                color: Colors.white.withOpacity(0.03),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
+              ),
+              child: const Text(
+                'Sin enlaces disponibles por ahora.',
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMarketHighlights(DashboardModel? dashboardData) {
+    final List<MarketTool> tools =
+        dashboardData?.data.marketTools ?? <MarketTool>[];
+    final List<MarketTool> highlighted = List<MarketTool>.from(tools)
+      ..sort((MarketTool a, MarketTool b) {
+        final int scoreA = a.saleCount + a.clickCount + a.generalCount;
+        final int scoreB = b.saleCount + b.clickCount + b.generalCount;
+        return scoreB.compareTo(scoreA);
+      });
+
+    return ExGlassCard(
+      radius: 30,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text('Motor comercial', style: ExFuturisticTheme.sectionTitle),
+          const SizedBox(height: 8),
+          Text(
+            tools.isEmpty
+                ? 'Todavía no hay herramientas comerciales visibles en el dashboard.'
+                : '${tools.length} activos cargados desde tu panel real. Estos son los que muestran mejor tracción ahora.',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              height: 1.45,
+              fontFamily: 'Poppins',
+            ),
+          ),
+          const SizedBox(height: 14),
+          if (tools.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                color: Colors.white.withOpacity(0.03),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
+              ),
+              child: const Text(
+                'Sin productos destacados por ahora.',
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+            )
+          else
+            ...highlighted.take(2).map((MarketTool tool) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _ToolHighlightCard(tool: tool),
+              );
+            }).toList(),
+        ],
+      ),
     );
   }
 
@@ -652,6 +799,12 @@ class _DashboardPageV2State extends State<DashboardPageV2> {
   Widget _buildActivityFeed(DashboardModel? dashboardData) {
     final List<Map<String, dynamic>> activities =
         dashboardData?.data.recentActivities ?? <Map<String, dynamic>>[];
+    final List<Map<String, dynamic>> notifications =
+        dashboardData?.data.notifications ?? <Map<String, dynamic>>[];
+    final List<Map<String, dynamic>> feed = <Map<String, dynamic>>[
+      ...activities,
+      ...notifications,
+    ];
 
     return ExGlassCard(
       radius: 30,
@@ -660,7 +813,7 @@ class _DashboardPageV2State extends State<DashboardPageV2> {
         children: <Widget>[
           Text('Actividad reciente', style: ExFuturisticTheme.sectionTitle),
           const SizedBox(height: 12),
-          if (activities.isEmpty)
+          if (feed.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 18),
               child: Center(
@@ -676,7 +829,7 @@ class _DashboardPageV2State extends State<DashboardPageV2> {
               ),
             )
           else
-            ...activities.take(3).map((Map<String, dynamic> item) {
+            ...feed.take(4).map((Map<String, dynamic> item) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Container(
@@ -733,6 +886,23 @@ class _DashboardPageV2State extends State<DashboardPageV2> {
             }).toList(),
         ],
       ),
+    );
+  }
+
+  Future<void> _copyLink(String value) async {
+    if (value.isEmpty) {
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: value));
+    Get.rawSnackbar(
+      messageText: const Text(
+        'Enlace copiado al portapapeles',
+        style: TextStyle(color: Colors.white, fontFamily: 'Poppins'),
+      ),
+      backgroundColor: const Color(0xFF111714),
+      borderRadius: 18,
+      margin: const EdgeInsets.all(16),
+      snackPosition: SnackPosition.BOTTOM,
     );
   }
 
@@ -1014,6 +1184,193 @@ class _QuickActionCard extends StatelessWidget {
               fontWeight: FontWeight.w600,
               fontFamily: 'Poppins',
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LinkActionCard extends StatelessWidget {
+  const _LinkActionCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.accent,
+    required this.onCopy,
+    required this.onShare,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color accent;
+  final VoidCallback onCopy;
+  final VoidCallback onShare;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        color: Colors.white.withOpacity(0.04),
+        border: Border.all(color: accent.withOpacity(0.18)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: accent.withOpacity(0.14),
+            ),
+            child: Icon(icon, color: accent),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white60,
+                    fontSize: 12,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onCopy,
+            icon: const Icon(Icons.copy_rounded, color: Colors.white70),
+          ),
+          IconButton(
+            onPressed: onShare,
+            icon: const Icon(Icons.share_outlined, color: Colors.white70),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToolHighlightCard extends StatelessWidget {
+  const _ToolHighlightCard({required this.tool});
+
+  final MarketTool tool;
+
+  @override
+  Widget build(BuildContext context) {
+    final String primaryValue = tool.saleCount > 0
+        ? '${tool.saleCount} ventas'
+        : '${tool.clickCount} clics';
+    final String secondaryValue = tool.saleAmount.isNotEmpty
+        ? tool.saleAmount
+        : (tool.totalCommission.isNotEmpty ? tool.totalCommission : '--');
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        color: Colors.white.withOpacity(0.04),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              color: ExFuturisticTheme.primary.withOpacity(0.14),
+            ),
+            child: tool.feviIcon.isNotEmpty
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.network(
+                      tool.feviIcon,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.bolt_rounded,
+                        color: ExFuturisticTheme.primary,
+                      ),
+                    ),
+                  )
+                : const Icon(
+                    Icons.bolt_rounded,
+                    color: ExFuturisticTheme.primary,
+                  ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  tool.title.isEmpty ? 'Activo comercial' : tool.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  tool.description.isEmpty
+                      ? 'Herramienta sincronizada desde tu dashboard.'
+                      : tool.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white60,
+                    fontSize: 12,
+                    height: 1.35,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              Text(
+                primaryValue,
+                style: const TextStyle(
+                  color: ExFuturisticTheme.primary,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                secondaryValue,
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+            ],
           ),
         ],
       ),
