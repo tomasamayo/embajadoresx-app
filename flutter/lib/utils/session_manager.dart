@@ -24,6 +24,26 @@ class SessionManager {
       final parsed = int.tryParse(raw.toString());
       if (parsed != null && parsed > 0) return parsed;
     }
+
+    for (final key in ['user', 'data', 'profile', 'customer']) {
+      final dynamic nested = json[key];
+      if (nested is Map<String, dynamic>) {
+        final int? nestedId = extractUserId(nested);
+        if (nestedId != null && nestedId > 0) {
+          return nestedId;
+        }
+      }
+    }
+
+    for (final dynamic value in json.values) {
+      if (value is Map<String, dynamic>) {
+        final int? nestedId = extractUserId(value);
+        if (nestedId != null && nestedId > 0) {
+          return nestedId;
+        }
+      }
+    }
+
     return null;
   }
 
@@ -89,4 +109,3 @@ class SessionManager {
     debugPrint('[SessionManager] Sesion limpiada');
   }
 }
-
