@@ -1,0 +1,71 @@
+### APP_EX_ANDRIO - Registro de Cambios (ChangeLog) ###
+
+[2026-03-17]
+- [Login] Implementación de bloque try-finally para evitar bloqueo infinito del botón de carga.
+- [Login] Feedback visual con SnackBar rojo brillante para errores de credenciales.
+- [Login] Limpieza automática de mensajes de error al empezar a escribir.
+- [Login] Bloqueo de múltiples clics durante el estado de carga.
+- [Benefits] Rediseño completo con estilo Premium Oro/Negro (ahora Verde Neón/Negro).
+- [Benefits] Implementación de fondo radial premium con partículas de brillo.
+- [Benefits] Carrusel interactivo de rangos con PageView.builder.
+- [Benefits] Efecto de enfoque ultra-potente: escala 1.0 vs 0.8, opacidad 0.2 en laterales.
+- [Benefits] Efecto de desenfoque (Blur 2.0) en tarjetas de rango no activas.
+- [Benefits] Sincronización dinámica de misiones y premios al deslizar el carrusel.
+- [Benefits] Animaciones fluidas con AnimatedSwitcher (500ms) y SlideTransition.
+- [Benefits] Micro-interacción: Animación de pulso en el botón "EXPLORAR".
+- [Benefits] Corrección de crash potencial en substring de nivel y ajuste de peso de fuente (w900).
+- [Cosmetic] Migración total de esquema de color: de Dorado/Amarillo a Verde Neón (#00FF88).
+- [Academy] V1.6 - Academia EX: Optimización del flujo de visualización con botón único inteligente, sistema de filtrado avanzado, UI premium con degradados y una espectacular animación de transición 'Slide Up & Fade' (de abajo hacia arriba) para el cambio de vista híbrida.
+- [Events] V1.7 - Sistema de Eventos: Corrección de validación de expiración (sincronizada con server_time), renombramiento de 'Misiones' a 'Eventos Flash' en toda la interfaz y actualización de navegación inferior.
+- [Events] V1.8 - HotFix: Restauración de visibilidad de eventos flash tras refactorización de nombres y sincronización de cronómetro con server_time.
+- [Events] V1.9 - Eventos Flash: Eliminación de dependencia de hora local del sistema. Implementación de cuenta regresiva basada exclusivamente en el campo 'remaining_time' de la API para evitar falsos positivos de expiración.
+- [Events] V2.0 - Eventos Flash: Reparación del motor del cronómetro (Fix de inicialización de Duration) y carga dinámica de imágenes de eventos desde la API.
+- [Events] V2.1 - HotFix Crítico: Eliminación de bloqueos por errores 404 de assets y estabilización del motor de tiempo para Eventos Flash.
+- [Events] V2.2 - Eventos Flash: Reconstrucción total del ciclo de vida del Timer. Sincronización forzada de Duration mediante didUpdateWidget y eliminación de fugas de memoria por timers duplicados.
+- [Events] V2.3 - Eventos Flash: Sincronización final de tiempos. Eliminación de valores estáticos (hardcoded) y mapeo dinámico del campo 'remaining_time' de la API al motor del cronómetro.
+- [Events] V2.4 - Eventos Flash: Reconstrucción forzada del parser de tiempo y sincronización reactiva mediante didUpdateWidget. Eliminación definitiva de bloqueos de inicialización.
+- [Events] V2.5 - HotFix Final de Tiempo: Eliminación de parseo de sistema por split manual de String para garantizar compatibilidad con formato de API 00:00:00.
+- [Events] V2.6 - Eventos Flash: Solución de bug de sincronización. Se movió la lógica de parseo a didUpdateWidget para capturar el tiempo real de la API tras la carga asíncrona, eliminando el bloqueo de ceros iniciales.
+- [Events] V2.7 - Eventos Flash: Solución definitiva al desfase asíncrono. Implementación de guardas de validación para evitar el parseo de datos nulos/ceros iniciales y reactivación del timer mediante didUpdateWidget. Refactorización reactiva de EventService con GetX Obx para escucha activa de datos API.
+- [Events] V2.8 - Eventos Flash: Corrección de error crítico en la capa de modelo (Factory fromJSON). Se eliminó la sobreescritura accidental del tiempo restante por valores por defecto. Implementación de logs de diagnóstico de flujo de datos (Incoming vs Mapped).
+- [Events] V2.9 - Estabilizacion critica: Eliminacion de errores de codificacion UTF-8 y blindaje de nulidad en el mapeo de tiempos de la API.
+- [Events] V3.0 - Eventos Flash: Solucion definitiva de mapeo de llaves. Se corrigio la discrepancia entre la llave del JSON (remaining_time) y la propiedad del modelo.
+- [Dashboard] V3.1 - UI Dashboard: Ajuste de margenes y escala en la grafica de ventas para corregir la visibilidad de los dias Lunes y Domingo en el eje X.
+- [Dashboard] V3.2 - Dashboard: Correccion de recorte de etiquetas en eje X mediante la expansion de los limites minX/maxX y adicion de padding lateral en el contenedor principal.
+- [Dashboard] V3.3 - Dashboard: Sincronizacion de indices del eje X con etiquetas de dias. Se elimino el desplazamiento de titulos y se fijaron limites minX/maxX para evitar duplicidad de etiquetas.
+- [Dashboard] V3.4 - Dashboard Fix: Eliminacion de indices fantasma en eje X. Mapeo estricto de 0-6 para dias de la semana y ocultamiento de valores fuera de rango.
+- [Dashboard] V3.5 - Dashboard: Reconstruccion de la lista de FlSpots para garantizar indices 0-6. Eliminacion de ruido visual y ajuste de padding asimetrico para visualizacion correcta de etiquetas extremas.
+- [Dashboard] V3.6 - Restauracion Total: Recuperacion de navegacion inferior y acceso a perfil tras error de sobrescritura. Estabilizacion de UI del Dashboard.
+- [Dashboard] V3.7 - UX Dashboard: Unificacion del acceso al perfil en el bloque de saludo. Eliminacion de iconos redundantes y adicion de subtitulo guia 'Ir al perfil'.
+- [Dashboard] V3.8 - Refinamiento de UX: Segmentacion de interactividad en el encabezado. Se independizaron los clics del Avatar y el enlace 'Ir al perfil' con efectos de salpicadura neon. El saludo 'Hola' se establecio como texto estatico para mejorar la jerarquia visual y evitar navegaciones accidentales.
+- [Dashboard] V3.9 - IA Marketing Center: Implementacion de buscador predictivo y sensible para la seleccion de productos. Mejora de UX mediante filtrado en tiempo real y visualizacion de iconos de productos en las sugerencias.
+- [Dashboard] V4.0 - IA Marketing Center: Reemplazo de SearchDelegate por Autocomplete integrado. Sugerencias en tiempo real mediante un Overlay flotante sin salir del modal principal, manteniendo el diseño oscuro y minimalista.
+- [Dashboard] V4.1 - IA Marketing Center: Tipado estricto en el buscador de productos. Migracion de dynamic a MarketTool para garantizar seguridad de tipos y evitar errores en tiempo de ejecucion.
+- [Dashboard] V4.2 - IA Marketing Center: Correccion de error de referencia en MarketTool. Se agrego la propiedad 'id' al modelo con mapeo defensivo (id/product_id) para habilitar la generacion de copys mediante IA.
+- [Dashboard] V4.3 - IA Marketing Center: Polimorfismo en el buscador de productos. Se habilito el soporte para multiples modelos de datos (MarketTool y BannerData) permitiendo abrir el IA Marketing Center desde el Dashboard o la pantalla de Banners y Enlaces sin errores de tipo.
+- [Dashboard] V4.4 - IA Marketing Center: Estabilizacion final de tipos. Implementacion de clase adaptadora 'SearchableProduct' para unificar diferentes modelos de datos, eliminando definitivamente el uso de 'dynamic' y garantizando la seguridad de tipos en el autocompletado y la generacion de copys.
+- [Dashboard] V4.5 - IA Marketing Center: Refinamiento de UX en el buscador. Las sugerencias ahora solo son visibles cuando el campo contiene texto, garantizando un inicio limpio y una interfaz despejada.
+
+[2026-03-18]
+- [Events] V4.3 - Eventos Flash: Implementación de filtro de expiración en tiempo real. Los eventos con cronómetro en cero o fecha de fin superada se ocultan automáticamente de la vista del usuario.
+- [Dashboard] V4.4 - IA Marketing Center: Rediseño visual de tarjetas estilo 'Z1', implementación de historial local de copys generados y modal completo para exploración de plantillas.
+- [IA Marketing] V4.5 - IA Marketing: Sincronización de nomenclatura con el diseño original, implementación de persistencia para el historial de copys y activación de la función de copiado real.
+- [IA Marketing] V4.6 - IA Marketing: Eliminación de overflow en Banners, corrección del motor de copiado y unificación de buscadores predictivos en todo el Centro de IA.
+- [IA Marketing] V4.7 - HotFix Crítico: Eliminación de redundancia en Banners, corrección de error de aserción en Autocomplete y restauración de flujo de UI limpio.
+- [IA Marketing] V4.9 - HotFix de Contenido: Implementación de prompt restrictivo agresivo para textos cortos de IA. Mejora de UX en cuadrícula de banners mostrando precio y comisión directamente.
+- [UI Banners] V5.0 - UI Banners: Rediseño completo de la vista de cuadrícula. Se añadieron estrellas de calificación y se organizó la información de Precio/Ganancia en un formato de doble columna para mejor legibilidad.
+- [Profile] V5.1 - Perfil: Sincronización del modal de membresía con datos reales de la API. Implementación de cálculo dinámico para días de vencimiento.
+- [Membership] V5.2 - Membresía: Eliminación definitiva de datos quemados (hardcoded). Implementación de lógica de días restantes basada en el servidor y mapeo dinámico del nombre del plan.
+
+[2026-03-17] - Versión Oficial 1.1.0+3
+- [Release] V1.1.0+3 - Release de Estabilidad: Versión oficial tras corrección de motor de eventos, visualización de dashboard y buscador inteligente de IA.
+- [Dashboard] V1.1.0+3 - Actualización de versión en pubspec.yaml y Drawer lateral para reflejar el nuevo hito de estabilidad.
+- [Release] V4.2 - Incremento de versión de compilación y actualización de etiqueta visual manual en el menú lateral a 1.1.0+3.
+
+[2026-03-19] - Versión Oficial 1.2.0
+- [Release] V1.2.0 - Actualización de Beneficios y Rediseño Neón: Versión oficial consolidada.
+- [Benefits] V1.2.0 - Implementación de la nueva sección "Beneficios EX" con lógica dinámica de canje.
+- [UI/UX] V1.2.0 - Rediseño total de la interfaz bajo estética Neón Brutal (Verde y Fucsia).
+- [Sync] V1.2.0 - Corrección de errores críticos de sincronización en Membresías e Historial de Compras.
+- [Academy] V1.2.0 - Optimización tipográfica en el apartado de Lecciones para mayor limpieza visual.
+- [Auth] V1.2.0 - Estabilización del flujo de Cierre de Sesión.
