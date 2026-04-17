@@ -12,7 +12,8 @@ import 'dart:convert';
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  debugPrint('🌙 [FCM BACKGROUND] Mensaje recibido: ${message.notification?.title}');
+  debugPrint(
+      '🌙 [FCM BACKGROUND] Mensaje recibido: ${message.notification?.title}');
 }
 
 class NotificationService {
@@ -20,32 +21,59 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  FirebaseMessaging? _messaging;
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
   // GUARD: Evitar registros redundantes (v4.1.0)
   String? _lastRegisteredUserId;
   String? _lastRegisteredToken;
 
+  bool get _isLocalWebDebugBypass => kDebugMode && kIsWeb;
+
+  FirebaseMessaging? get _firebaseMessaging {
+    if (_isLocalWebDebugBypass) {
+      return null;
+    }
+    _messaging ??= FirebaseMessaging.instance;
+    return _messaging;
+  }
+
   Future<void> initialize() async {
+    if (_isLocalWebDebugBypass) {
+      debugPrint(
+          '🧪 [FCM] NotificationService bypass activo para Flutter web en modo debug.');
+      return;
+    }
+
+    final FirebaseMessaging? messaging = _firebaseMessaging;
+    if (messaging == null) {
+      return;
+    }
+
     // 1. Configurar Local Notifications (Para banners en Foreground)
-    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('ic_notification');
-    const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('ic_notification');
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
     await _localNotifications.initialize(initializationSettings);
 
     // Canal de alta importancia para Android
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'high_importance_channel', 
-      'Notificaciones de Embajadores EX', 
+      'high_importance_channel',
+      'Notificaciones de Embajadores EX',
       description: 'Este canal se usa para notificaciones importantes.',
       importance: Importance.max,
     );
 
-    await _localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
 
     // 2. Solicitar permisos
-    NotificationSettings settings = await _messaging.requestPermission(alert: true, badge: true, sound: true);
+    NotificationSettings settings = await messaging.requestPermission(
+        alert: true, badge: true, sound: true);
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       debugPrint('✅ [FCM] Permisos concedidos');
@@ -54,7 +82,7 @@ class NotificationService {
     // 3. Listener de refresco de Token (v2.1.0)
     // No registramos aquí al inicio porque main() corre antes del Login.
     // El registro inicial se delega al LoginController.
-    _messaging.onTokenRefresh.listen((newToken) {
+    messaging.onTokenRefresh.listen((newToken) {
       debugPrint('🔄 [FCM] Token refrescado detectado.');
       registerTokenWithServer(newToken);
     });
@@ -62,8 +90,9 @@ class NotificationService {
     // 4. Configurar Manejadores de Mensajes (v2.1.2)
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       // REQUERIMIENTO: Log específico para el usuario
-      debugPrint('🔔 ¡MENSAJE RECIBIDO EN VIVO!: ${message.notification?.title}');
-      
+      debugPrint(
+          '🔔 ¡MENSAJE RECIBIDO EN VIVO!: ${message.notification?.title}');
+
       RemoteNotification? notification = message.notification;
       AndroidNotification? android = message.notification?.android;
 
@@ -78,7 +107,8 @@ class NotificationService {
               channel.id,
               channel.name,
               channelDescription: channel.description,
-              icon: 'ic_notification', // REQUERIMIENTO: Icono dedicado en drawable
+              icon:
+                  'ic_notification', // REQUERIMIENTO: Icono dedicado en drawable
               importance: Importance.max,
               priority: Priority.high,
               ticker: 'ticker',
@@ -95,14 +125,17 @@ class NotificationService {
     });
   }
 
-  Future<void> registerTokenWithServer(String fcmToken, {String? explicitUserId}) async {
+  Future<void> registerTokenWithServer(String fcmToken,
+      {String? explicitUserId}) async {
     try {
-      final String? userIdStr = explicitUserId ?? SessionManager.instance.userId;
+      final String? userIdStr =
+          explicitUserId ?? SessionManager.instance.userId;
       final int userId = int.tryParse(userIdStr ?? '0') ?? 0;
       final String? authToken = SessionManager.instance.token;
 
       if (userId <= 0) {
-        debugPrint('⚠️ [FCM] Abortando registro: ID de usuario inválido o nulo ($userId).');
+        debugPrint(
+            '⚠️ [FCM] Abortando registro: ID de usuario inválido o nulo ($userId).');
         return;
       }
 
@@ -112,14 +145,20 @@ class NotificationService {
         'device_type': 'android',
       };
 
-      debugPrint('📡 [FCM] Intentando envío al servidor para usuario ID: $userId');
-      
-      final res = await ApiService.instance.postData2('api/register_fcm_token', body, token: authToken);
+      debugPrint(
+          '📡 [FCM] Intentando envío al servidor para usuario ID: $userId');
 
-      if (res != null && (res['status'] == true || res['status'] == 'success' || res['status'] == 'ok')) {
+      final res = await ApiService.instance
+          .postData2('api/register_fcm_token', body, token: authToken);
+
+      if (res != null &&
+          (res['status'] == true ||
+              res['status'] == 'success' ||
+              res['status'] == 'ok')) {
         print('✅ [SERVIDOR] Registro de token exitoso');
       } else {
-        print('❌ [SERVIDOR] Error: ${res?['message'] ?? 'Respuesta inválida del servidor'}');
+        print(
+            '❌ [SERVIDOR] Error: ${res?['message'] ?? 'Respuesta inválida del servidor'}');
       }
     } catch (e) {
       print('❌ [SERVIDOR] Error: $e');
@@ -142,20 +181,34 @@ class NotificationService {
       };
 
       debugPrint('📡 [FCM] Desvinculando token para usuario: $userIdStr');
-      
+
       // Intentamos con un endpoint dedicado o el mismo con flag
-      await ApiService.instance.postData2('api/unregister_fcm_token', body, token: authToken);
-      
+      await ApiService.instance
+          .postData2('api/unregister_fcm_token', body, token: authToken);
+
       print('✅ [FCM] Token desvinculado exitosamente del servidor');
     } catch (e) {
-      debugPrint('⚠️ [FCM] Error al desvincular token (posiblemente endpoint inexistente): $e');
+      debugPrint(
+          '⚠️ [FCM] Error al desvincular token (posiblemente endpoint inexistente): $e');
     }
   }
 
-  Future<String?> getToken() async => await _messaging.getToken();
+  Future<String?> getToken() async {
+    if (_isLocalWebDebugBypass) {
+      debugPrint('🧪 [FCM] getToken omitido en Flutter web local.');
+      return null;
+    }
+    return await _firebaseMessaging?.getToken();
+  }
 
   // REQUERIMIENTO: Registro robusto v4.0.0
   Future<void> registerFCMTokenIfReady() async {
+    if (_isLocalWebDebugBypass) {
+      debugPrint(
+          '🧪 [FCM] registerFCMTokenIfReady omitido en Flutter web local.');
+      return;
+    }
+
     try {
       final String? userIdStr = SessionManager.instance.userId;
       final int userId = int.tryParse(userIdStr ?? '0') ?? 0;
@@ -172,18 +225,20 @@ class NotificationService {
       }
 
       // GUARD: Evitar registros redundantes si nada ha cambiado
-      if (_lastRegisteredUserId == userIdStr && _lastRegisteredToken == fcmToken) {
-        debugPrint('🛡️ [FCM] Registro omitido: Token ya sincronizado para userId=$userId');
+      if (_lastRegisteredUserId == userIdStr &&
+          _lastRegisteredToken == fcmToken) {
+        debugPrint(
+            '🛡️ [FCM] Registro omitido: Token ya sincronizado para userId=$userId');
         return;
       }
 
       // Llamada directa al servidor
       await registerTokenWithServer(fcmToken, explicitUserId: userIdStr);
-      
+
       // Actualizar estado del guard
       _lastRegisteredUserId = userIdStr;
       _lastRegisteredToken = fcmToken;
-      
+
       print('✅ [FCM] Token registrado para userId=$userId');
     } catch (e) {
       debugPrint('❌ [FCM] Error en registerFCMTokenIfReady: $e');

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:affiliatepro_mobile/config/app_config.dart';
 import 'package:http/http.dart' as http;
@@ -34,14 +35,15 @@ class ApiService {
         if (e.response?.statusCode == 401) {
           // TAREA 3: PREVENCION DE EXPIRACION (SOFT)
           // NO borramos el token de inmediato para permitir reintentos o verificaciones de sesion manuales.
-          debugPrint('ERROR 401 DETECTADO (Dio): La sesion podria haber expirado.');
-          
+          debugPrint(
+              'ERROR 401 DETECTADO (Dio): La sesion podria haber expirado.');
+
           // Solo redirigimos si realmente no podemos recuperar la sesion o el usuario lo decide.
           // Por ahora, mantenemos la redireccion pero sin el logOut agresivo inmediato si es posible.
           // await SharedPreference.logOut(); // COMENTADO para evitar borrado accidental
-          
-          getx.Get.offAll(() => const LoginPage()); 
-          
+
+          getx.Get.offAll(() => const LoginPage());
+
           getx.Get.snackbar(
             "Sesion Expirada",
             "Tu sesion ha caducado. Por favor, ingresa de nuevo.",
@@ -53,8 +55,11 @@ class ApiService {
         }
 
         // REDIRECCIÓN GLOBAL A MANTENIMIENTO PARA ERRORES CRÍTICOS DEL SERVIDOR (v1.2.9)
-        if (e.response?.statusCode == 500 || e.response?.statusCode == 503 || e.response?.statusCode == 504) {
-          debugPrint('🚨 [CRITICAL ERROR] Server ${e.response?.statusCode} detectado. Redirigiendo a mantenimiento.');
+        if (e.response?.statusCode == 500 ||
+            e.response?.statusCode == 503 ||
+            e.response?.statusCode == 504) {
+          debugPrint(
+              '🚨 [CRITICAL ERROR] Server ${e.response?.statusCode} detectado. Redirigiendo a mantenimiento.');
           getx.Get.toNamed('/offline');
         }
 
@@ -64,12 +69,12 @@ class ApiService {
   }
 
   String get baseUrl => _baseUrl;
-
-  final String _baseUrl = AppConfig.baseUrl;
-  final String _licenseKey = AppConfig.licenseKey;
+  String get _baseUrl => AppConfig.baseUrl;
+  String get _licenseKey => AppConfig.licenseKey;
 
   // TAREA 2: URL CENTRALIZADA PARA ACTUALIZACIÓN DE ENLACES (v1.7.7)
-  static const String updateAffiliateLinkUrl = 'https://embajadoresx.com/api/update_affiliate_link';
+  static const String updateAffiliateLinkUrl =
+      'https://embajadoresx.com/api/update_affiliate_link';
 
   Map<String, String> headers = {
     'Content-Type': 'application/x-www-form-urlencoded'
@@ -78,6 +83,15 @@ class ApiService {
   // --- MÉTODOS ORIGINALES (DIO) ---
 
   Future<bool> validateLicense() async {
+    debugPrint('[LICENSE] baseUrl=$_baseUrl');
+    debugPrint(
+        '[LICENSE] licenseKey=${_licenseKey.isEmpty ? "(empty)" : _licenseKey}');
+
+    if (_baseUrl.isEmpty || _licenseKey.isEmpty) {
+      debugPrint('[LICENSE] AppConfig aún no está cargado correctamente.');
+      return false;
+    }
+
     final response = await postData('user/license_validate', {
       'license_key': _licenseKey,
     });
@@ -85,18 +99,25 @@ class ApiService {
     if (response != null && response['status'] == true) {
       return true;
     } else {
+      if (kDebugMode &&
+          kIsWeb &&
+          _baseUrl.isNotEmpty &&
+          _licenseKey.isNotEmpty) {
+        debugPrint(
+            '[LICENSE] Debug web fallback enabled. Allowing local run with loaded config.');
+        return true;
+      }
       return false;
     }
   }
 
-  Future<dynamic> getData(String endPoint,
-      {String? token}) async {
+  Future<dynamic> getData(String endPoint, {String? token}) async {
     try {
       String url = _baseUrl + endPoint;
       Response response;
       // TAREA 1: ASEGURAR TOKEN CON PREFIJO BEARER (v30.0.0)
-      final String authHeader = (token != null && !token.startsWith('Bearer ')) 
-          ? 'Bearer $token' 
+      final String authHeader = (token != null && !token.startsWith('Bearer '))
+          ? 'Bearer $token'
           : (token ?? '');
 
       if (token == null) {
@@ -109,12 +130,17 @@ class ApiService {
       final data = response.data;
 
       // PROTECCIÓN HTML: Si el servidor devuelve una página de error en vez de JSON
-      if (data is String && (
-          data.trimLeft().startsWith('<!DOCTYPE') ||
-          data.trimLeft().startsWith('<html') ||
-          data.trimLeft().startsWith('<!doctype'))) {
-        debugPrint('❌ [API ERROR] HTML detectado en getData($endPoint) — posible 404/500');
-        return {'status': false, 'message': 'Error 404: Endpoint no encontrado en el servidor ($endPoint)'};
+      if (data is String &&
+          (data.trimLeft().startsWith('<!DOCTYPE') ||
+              data.trimLeft().startsWith('<html') ||
+              data.trimLeft().startsWith('<!doctype'))) {
+        debugPrint(
+            '❌ [API ERROR] HTML detectado en getData($endPoint) — posible 404/500');
+        return {
+          'status': false,
+          'message':
+              'Error 404: Endpoint no encontrado en el servidor ($endPoint)'
+        };
       }
 
       return data;
@@ -122,13 +148,15 @@ class ApiService {
       // TAREA 1 (v9.0.0): BYPASS TOTAL 403. Ya no mostramos el mensaje de error "Acceso denegado".
       // El controlador manejará la respuesta (sea 403 o no) cargando productos de fallback si es necesario.
       if (e.response?.statusCode == 403) {
-        print('🛡️ [BYPASS v9.0.0] 403 Detectado. Silenciando error para permitir carga de productos de fallback.');
-        return e.response?.data; // Retornamos la data del error para que el controlador pueda decidir
+        print(
+            '🛡️ [BYPASS v9.0.0] 403 Detectado. Silenciando error para permitir carga de productos de fallback.');
+        return e.response
+            ?.data; // Retornamos la data del error para que el controlador pueda decidir
       }
-      
+
       // TAREA 1: Solo redirigir a Offline si es un error de red real (Socket o Timeout)
-      if (e.type == DioExceptionType.connectionTimeout || 
-          e.type == DioExceptionType.sendTimeout || 
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.error is SocketException) {
         debugPrint("Network Error (Dio): ${e.type} | ${e.message}");
@@ -141,8 +169,7 @@ class ApiService {
     }
   }
 
-  Future<dynamic> getData2(
-      String endPoint, num pageId, num perPage,
+  Future<dynamic> getData2(String endPoint, num pageId, num perPage,
       {String? token}) async {
     try {
       String url = _baseUrl + endPoint;
@@ -178,16 +205,19 @@ class ApiService {
       if (endPoint.contains('User/login') && body is Map) {
         dataToSend = FormData.fromMap(body as Map<String, dynamic>);
         options.contentType = 'multipart/form-data';
-        debugPrint('🛠️ [FIX 422] Convirtiendo body a FormData y forzando multipart/form-data');
+        debugPrint(
+            '🛠️ [FIX 422] Convirtiendo body a FormData y forzando multipart/form-data');
       }
 
       // REQUERIMIENTO v5.0.1: Forzar JSON para Google Login
       if (endPoint.contains('google_login')) {
         options.contentType = 'application/json';
-        debugPrint('🛠️ [GOOGLE] Forzando application/json para endpoint Google');
+        debugPrint(
+            '🛠️ [GOOGLE] Forzando application/json para endpoint Google');
       }
 
-      Response response = await _dio.post(url, data: dataToSend, options: options);
+      Response response =
+          await _dio.post(url, data: dataToSend, options: options);
 
       if (response.data is Map<String, dynamic>) {
         return response.data;
@@ -227,8 +257,8 @@ class ApiService {
 
       Response response;
       // TAREA 1: ASEGURAR TOKEN CON PREFIJO BEARER (v30.0.0)
-      final String authHeader = (token != null && !token.startsWith('Bearer ')) 
-          ? 'Bearer $token' 
+      final String authHeader = (token != null && !token.startsWith('Bearer '))
+          ? 'Bearer $token'
           : (token ?? '');
 
       if (token == null) {
@@ -252,18 +282,17 @@ class ApiService {
     }
   }
 
-  Future<dynamic> deleteData(String endPoint,
-      {String? token}) async {
+  Future<dynamic> deleteData(String endPoint, {String? token}) async {
     try {
       String url = _baseUrl + endPoint;
-      
+
       // TAREA 2: LOG DE URL COMPLETA (Requerimiento Haniel)
       print('🔗 https://www.clozemaster.com/translate/spa-eng/intentado: $url');
 
       Response response;
       // TAREA 1: ASEGURAR TOKEN CON PREFIJO BEARER (v30.0.0)
-      final String authHeader = (token != null && !token.startsWith('Bearer ')) 
-          ? 'Bearer $token' 
+      final String authHeader = (token != null && !token.startsWith('Bearer '))
+          ? 'Bearer $token'
           : (token ?? '');
 
       if (token == null) {
@@ -276,14 +305,16 @@ class ApiService {
         // Si el servidor rechaza DELETE, cambiar _dio.delete por _dio.post
         response = await _dio.delete(url, options: Options(headers: headers));
       }
-      
+
       // TAREA 1: FILTRO DE RESPUESTA HTML (Protección contra 404/500)
-      if (response.data.toString().contains('<!doctype html>') || 
+      if (response.data.toString().contains('<!doctype html>') ||
           response.data.toString().contains('<!DOCTYPE html>')) {
-        print('❌ [API ERROR] Respuesta HTML detectada en lugar de JSON (404/500)');
+        print(
+            '❌ [API ERROR] Respuesta HTML detectada en lugar de JSON (404/500)');
         return {
-          'status': false, 
-          'message': 'Error del servidor: Ruta no encontrada (404). Contacta al administrador.'
+          'status': false,
+          'message':
+              'Error del servidor: Ruta no encontrada (404). Contacta al administrador.'
         };
       }
 
@@ -291,13 +322,15 @@ class ApiService {
     } catch (error) {
       if (error is DioException) {
         print('[DIO DELETE ERROR]: ${error.type} | ${error.message}');
-        
+
         // TAREA 1: Manejo de error 404 en catch
-        if (error.response?.statusCode == 404 || 
-            (error.response?.data?.toString().contains('<!doctype html>') ?? false)) {
+        if (error.response?.statusCode == 404 ||
+            (error.response?.data?.toString().contains('<!doctype html>') ??
+                false)) {
           return {
-            'status': false, 
-            'message': 'Error del servidor: Ruta no encontrada (404). Contacta al administrador.'
+            'status': false,
+            'message':
+                'Error del servidor: Ruta no encontrada (404). Contacta al administrador.'
           };
         }
 
@@ -315,7 +348,8 @@ class ApiService {
   /// Obtiene los datos del Dashboard (Endpoint temporal)
   Future<Map<String, dynamic>> fetchDashboardData() async {
     try {
-      final response = await http.get(Uri.parse('https://api-temporal.com/get-dashboard-data'));
+      final response = await http
+          .get(Uri.parse('https://api-temporal.com/get-dashboard-data'));
 
       if (response.statusCode == 200) {
         return json.decode(response.body);
@@ -345,9 +379,13 @@ class ApiService {
     return data.whereType<Map>().map((raw) {
       final prize = Map<String, dynamic>.from(raw);
 
-      final dynamic rawName = prize['name'] ?? prize['title'] ?? prize['prize_title'];
-      final dynamic rawDescription = prize['description'] ?? prize['short_description'] ?? prize['subtitle'];
-      final dynamic rawImageUrl = prize['image_url'] ?? prize['image'] ?? prize['icon'];
+      final dynamic rawName =
+          prize['name'] ?? prize['title'] ?? prize['prize_title'];
+      final dynamic rawDescription = prize['description'] ??
+          prize['short_description'] ??
+          prize['subtitle'];
+      final dynamic rawImageUrl =
+          prize['image_url'] ?? prize['image'] ?? prize['icon'];
 
       final String name = rawName?.toString().trim() ?? '';
       final String description = rawDescription?.toString().trim() ?? '';
@@ -373,21 +411,24 @@ class ApiService {
     try {
       // MODO PRODUCCIÓN V9.0
       final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-      String url = 'https://embajadoresx.com/Api/get_global_ranking?t=$timestamp';
-      
+      String url =
+          'https://embajadoresx.com/Api/get_global_ranking?t=$timestamp';
+
       if (userId != null) {
         url += '&user_id=$userId';
       }
-      
+
       if (token != null) {
         headers['Authorization'] = token;
       }
 
       print('🏆 [RANKING API] Solicitando Ranking Global...');
       print('🔗 [RANKING URL]: $url');
-      if (token != null) print('🔑 [RANKING TOKEN]: ${token.substring(0, 15)}...');
+      if (token != null)
+        print('🔑 [RANKING TOKEN]: ${token.substring(0, 15)}...');
 
-      Response response = await _dio.get(url, options: Options(headers: headers));
+      Response response =
+          await _dio.get(url, options: Options(headers: headers));
 
       print('📊 [RANKING STATUS]: ${response.statusCode}');
       // print('📦 [RANKING DATA]: ${response.data}'); // Opcional: muy pesado para logs de producción
@@ -437,9 +478,12 @@ class ApiService {
       if (token != null) {
         final cleanToken = token.trim();
         request.headers['Authorization'] = 'Bearer $cleanToken';
-        debugPrint('ENVIANDO CON HEADER: Bearer ' + cleanToken.substring(0, cleanToken.length > 10 ? 10 : cleanToken.length) + '...');
+        debugPrint('ENVIANDO CON HEADER: Bearer ' +
+            cleanToken.substring(
+                0, cleanToken.length > 10 ? 10 : cleanToken.length) +
+            '...');
       }
-      
+
       request.fields.addAll(fields);
 
       // 1. Imagen Destacada (Compatibilidad Web usando bytes) - TAREA 2: Manejo de nulos
@@ -460,7 +504,7 @@ class ApiService {
           final String field = fileData['field'] ?? 'downloadable_file[]';
           final List<int>? bytes = fileData['bytes'];
           final String name = fileData['name'] ?? 'file';
-          
+
           if (bytes != null && bytes.isNotEmpty) {
             request.files.add(http.MultipartFile.fromBytes(
               field,
@@ -472,21 +516,25 @@ class ApiService {
       }
 
       // TAREA 1: Refactorización a fromStream + TAREA 4: Timeout
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 30), onTimeout: () {
+      final streamedResponse = await request
+          .send()
+          .timeout(const Duration(seconds: 30), onTimeout: () {
         throw Exception('TIMEOUT_ERROR');
       });
-      
+
       final response = await http.Response.fromStream(streamedResponse);
 
       // TAREA 1: DECODIFICACIÓN SEGURA DE CARACTERES (UTF-8)
       final String responseBody = utf8.decode(response.bodyBytes);
 
       // TAREA 1: REVELACIÓN DEL ERROR (Captura del Body completo si no es JSON)
-      if (responseBody.trim().startsWith('<!DOCTYPE') || responseBody.trim().startsWith('<html')) {
+      if (responseBody.trim().startsWith('<!DOCTYPE') ||
+          responseBody.trim().startsWith('<html')) {
         print('🔍 [REVELACIÓN DEL ERROR]: $responseBody');
         return {
           'status': false,
-          'message': 'Error del servidor (HTML detectado). Consulta la consola para ver el reporte PHP.',
+          'message':
+              'Error del servidor (HTML detectado). Consulta la consola para ver el reporte PHP.',
           'body': responseBody
         };
       }
@@ -499,7 +547,12 @@ class ApiService {
           return jsonDecode(responseBody);
         } catch (e) {
           print('🔍 [REVELACIÓN DEL ERROR - JSON PARSE FAILED]: $responseBody');
-          return {'status': false, 'message': 'Error al procesar respuesta del servidor (No es JSON válido).', 'body': responseBody};
+          return {
+            'status': false,
+            'message':
+                'Error al procesar respuesta del servidor (No es JSON válido).',
+            'body': responseBody
+          };
         }
       } else if (response.statusCode == 401) {
         debugPrint('[MULTIPART ERROR 401]: Unauthorized');
@@ -509,7 +562,11 @@ class ApiService {
         return {'status': false, 'code': 422, 'message': responseBody};
       } else {
         debugPrint('[MULTIPART ERROR]: ${response.statusCode} - $responseBody');
-        return {'status': false, 'code': response.statusCode, 'message': responseBody};
+        return {
+          'status': false,
+          'code': response.statusCode,
+          'message': responseBody
+        };
       }
     } on SocketException catch (e) {
       debugPrint("SocketException (Multipart): $e");
@@ -523,7 +580,11 @@ class ApiService {
       if (e.toString().contains('TIMEOUT_ERROR')) {
         debugPrint('[ERROR]: Server timeout');
         getx.Get.toNamed('/offline');
-        return {'status': false, 'code': 408, 'message': 'Server timeout, please retry'};
+        return {
+          'status': false,
+          'code': 408,
+          'message': 'Server timeout, please retry'
+        };
       }
       debugPrint('[MULTIPART EXCEPTION]: $e');
       return null;

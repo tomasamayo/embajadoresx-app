@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:affiliatepro_mobile/helper/get_di.dart' as di;
 import 'package:affiliatepro_mobile/view/screens/login/login.dart';
@@ -16,38 +17,43 @@ import 'package:affiliatepro_mobile/service/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // TAREA: Inicialización de Firebase (v2.0.0)
-  try {
-    await Firebase.initializeApp();
-    
-    // Registrar manejador de segundo plano
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-    
-    // Inicializar servicio de notificaciones
-    final notificationService = NotificationService();
-    await notificationService.initialize();
-    
-    // REQUERIMIENTO ESPECIAL: TOKEN VISIBLE PARA TESTING
-    String? token = await FirebaseMessaging.instance.getToken();
-    print('-----------------------------------------');
-    print('🚀 TOKEN PARA MI AMIGO: $token');
-    print('-----------------------------------------');
-    
-    debugPrint('🔥 [FIREBASE] Inicializado con éxito');
-  } catch (e) {
-    debugPrint('❌ [FIREBASE] Error de inicialización: $e');
+  if (!(kDebugMode && kIsWeb)) {
+    try {
+      await Firebase.initializeApp();
+
+      // Registrar manejador de segundo plano
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+      // Inicializar servicio de notificaciones
+      final notificationService = NotificationService();
+      await notificationService.initialize();
+
+      // REQUERIMIENTO ESPECIAL: TOKEN VISIBLE PARA TESTING
+      String? token = await FirebaseMessaging.instance.getToken();
+      print('-----------------------------------------');
+      print('🚀 TOKEN PARA MI AMIGO: $token');
+      print('-----------------------------------------');
+
+      debugPrint('🔥 [FIREBASE] Inicializado con éxito');
+    } catch (e) {
+      debugPrint('❌ [FIREBASE] Error de inicialización: $e');
+    }
+  } else {
+    debugPrint(
+        '🧪 [FIREBASE] Bypass local activado para Flutter web en modo debug.');
   }
 
   // TAREA 3: LOG DE INICIO
   print('🚀 [SISTEMA] App iniciada con éxito - Versión 1.2.9');
-  
+
   await di.init();
   await AppConfig.load();
-  
+
   // TAREA 1: SessionManager (SINGLETON) - Inicialización única al arrancar
   await SessionManager.instance.loadToken();
-  
+
   runApp(const MyApp());
 }
 
@@ -81,7 +87,9 @@ class MyApp extends StatelessWidget {
       getPages: [
         GetPage(name: '/offline', page: () => const OfflineScreen()),
         GetPage(name: '/login', page: () => const LoginPage()),
-        GetPage(name: '/VendorAddProductScreen', page: () => const VendorAddProductScreen()),
+        GetPage(
+            name: '/VendorAddProductScreen',
+            page: () => const VendorAddProductScreen()),
       ],
       routes: {
         '/login': (context) => const LoginPage(),

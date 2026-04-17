@@ -35,9 +35,9 @@ class LoginController extends GetxController {
     required this.preferences,
   });
   SharedPreferences preferences;
-  
+
   // Google Sign In Instance
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  GoogleSignIn? _googleSignIn;
   TextEditingController firstNameController = TextEditingController();
   TextEditingController lastNameController = TextEditingController();
   TextEditingController emailController = TextEditingController();
@@ -93,6 +93,84 @@ class LoginController extends GetxController {
     update();
   }
 
+  String _resolveDeviceType() {
+    if (kIsWeb) {
+      // Compatibilidad con backend legado: el login espera un tipo móvil válido.
+      return "1";
+    }
+    return Platform.isAndroid
+        ? "1"
+        : Platform.isIOS
+            ? "2"
+            : "1";
+  }
+
+  Future<String> _getSafeDeviceToken({
+    required String logPrefix,
+    int maxRetries = 3,
+  }) async {
+    try {
+      String? token = await NotificationService().getToken();
+      int retries = 0;
+
+      while ((token == null || token.isEmpty) && retries < maxRetries) {
+        debugPrint(
+            '⏳ [$logPrefix] Token FCM nulo, reintentando ($retries/$maxRetries)...');
+        await Future.delayed(const Duration(seconds: 1));
+        token = await NotificationService().getToken();
+        retries++;
+      }
+
+      if (token == null || token.isEmpty) {
+        debugPrint(
+            '⚠️ [$logPrefix] Continuando sin token FCM. No debe bloquear el login.');
+        return '0';
+      }
+
+      return token;
+    } catch (e) {
+      debugPrint('⚠️ [$logPrefix] Error obteniendo token FCM: $e');
+      return '0';
+    }
+  }
+
+  Future<void> _syncNotificationsAfterLogin() async {
+    try {
+      await NotificationService().registerFCMTokenIfReady();
+    } catch (e) {
+      debugPrint(
+          '⚠️ [LOGIN] No se pudo sincronizar el token FCM después del login: $e');
+    }
+  }
+
+  String _normalizeUserStatus(String? status) {
+    return status?.trim().toLowerCase() ?? '';
+  }
+
+  bool _isMembershipExpired(String status) {
+    return status == "membership-status-expired";
+  }
+
+  bool _shouldBlockByUserStatus(String status) {
+    if (status.isEmpty) return false;
+    return status != "ok" && status != "active" && status != "approved";
+  }
+
+  bool _hasSuccessfulAuth(UserModel userModel) {
+    final bool apiStatus = userModel.status ?? false;
+    final bool hasToken =
+        (userModel.data?.token?.toString().trim().isNotEmpty ?? false);
+    return apiStatus && hasToken;
+  }
+
+  GoogleSignIn? _getGoogleSignIn() {
+    if (kIsWeb && kDebugMode) {
+      return null;
+    }
+    _googleSignIn ??= GoogleSignIn();
+    return _googleSignIn;
+  }
+
   checkRememberData() async {
     var userName = preferences.getString(AppText.userName) ?? "";
     userNameController.text = userName;
@@ -133,43 +211,26 @@ class LoginController extends GetxController {
             "";
   }
 
-  Future<void> autoLogin(BuildContext context, String userName, String password) async {
+  Future<void> autoLogin(
+      BuildContext context, String userName, String password) async {
     if (preferences.getString(AppText.userName) == null) {
       changeAutoLoading(false);
     }
     changeAutoLoading(true);
 
-    String deviceType;
-    if (kIsWeb) {
-      deviceType = "3";
-    } else {
-      deviceType = Platform.isAndroid ? "1" : Platform.isIOS ? "2" : "1";
-    }
-
-    // REQUERIMIENTO MISIÓN: Ajuste de llaves y valores (android/no_token_yet)
-    // REQUERIMIENTO v4.3.0: Asegurar Token FCM antes del AutoLogin
-    String? fcmToken = await NotificationService().getToken();
-    int retries = 0;
-    while ((fcmToken == null || fcmToken.isEmpty) && retries < 3) {
-      debugPrint('⏳ [AUTOLOGIN] Token FCM nulo, reintentando ($retries/3)...');
-      await Future.delayed(const Duration(seconds: 1));
-      fcmToken = await NotificationService().getToken();
-      retries++;
-    }
-
     Map<String, String> bodyParams = {
       "username": userName.trim(),
       "password": password.trim(),
-      "device_type": "android",
-      "device_token": fcmToken ?? 'no_token_available',
       "is_vendor": isVendor.toString(),
     };
 
     // REQUERIMIENTO v4.4.0: Log de depuración para investigar 422 (AutoLogin)
-    print('📤 [AUTOLOGIN BODY]: username=${bodyParams["username"]} | password=${bodyParams["password"]} | device_type=${bodyParams["device_type"]} | device_token=${bodyParams["device_token"]}');
+    print(
+        '📤 [AUTOLOGIN BODY]: username=${bodyParams["username"]} | password=${bodyParams["password"]} | is_vendor=${bodyParams["is_vendor"]}');
 
     try {
-      final value = await ApiService.instance.postData('User/login', bodyParams);
+      final value =
+          await ApiService.instance.postData('User/login', bodyParams);
       if (value == null) {
         changeAutoLoading(false);
         if (context.mounted) {
@@ -178,10 +239,11 @@ class LoginController extends GetxController {
         return;
       }
       UserModel userModel = UserModel.fromJson(value);
-      final String mensajeError = userModel.message ?? "Error desconocido en el servidor";
-      String status = userModel.data?.userStatus ?? "";
+      final String mensajeError =
+          userModel.message ?? "Error desconocido en el servidor";
+      final String status = _normalizeUserStatus(userModel.data?.userStatus);
 
-      if (status == "membership-status-expired") {
+      if (_isMembershipExpired(status)) {
         changeAutoLoading(false);
         if (context.mounted) {
           Navigator.pushReplacement(
@@ -192,7 +254,15 @@ class LoginController extends GetxController {
         return;
       }
 
-      if (status != "ok") {
+      if (!_hasSuccessfulAuth(userModel)) {
+        changeAutoLoading(false);
+        if (context.mounted) {
+          _showLoginErrorSnackBar(context, mensajeError);
+        }
+        return;
+      }
+
+      if (_shouldBlockByUserStatus(status)) {
         changeAutoLoading(false);
         if (context.mounted) {
           Navigator.pushReplacement(
@@ -203,34 +273,35 @@ class LoginController extends GetxController {
         return;
       }
 
-        if (userModel.status != null && (userModel.status ?? false)) {
-          // Guardar Token
-          if (userModel.data?.token != null) {
-            await SessionManager.instance.setToken(userModel.data!.token!);
-          }
+      if (_hasSuccessfulAuth(userModel)) {
+        // Guardar Token
+        if (userModel.data?.token != null) {
+          await SessionManager.instance.setToken(userModel.data!.token!);
+        }
 
-          // Unificar extracción de ID y persistencia (v4.0.0)
-          final int? extractedId = SessionManager.extractUserId(value['data'] ?? value);
-          if (extractedId != null && extractedId > 0) {
-            final String idStr = extractedId.toString();
-            await SessionManager.instance.setUserId(idStr);
-            AcademyService.globalUserId = idStr;
-            
-            // Trigger FCM (Paso 3)
-            await NotificationService().registerFCMTokenIfReady();
-          }
-          
-          userNameController.text = userName; 
-          
-          await SharedPreference.setUserData(userModel);
-        
+        // Unificar extracción de ID y persistencia (v4.0.0)
+        final int? extractedId =
+            SessionManager.extractUserId(value['data'] ?? value);
+        if (extractedId != null && extractedId > 0) {
+          final String idStr = extractedId.toString();
+          await SessionManager.instance.setUserId(idStr);
+          AcademyService.globalUserId = idStr;
+
+          // Sincronización secundaria: nunca debe bloquear el login.
+          unawaited(_syncNotificationsAfterLogin());
+        }
+
+        userNameController.text = userName;
+
+        await SharedPreference.setUserData(userModel);
+
         if (rememberMe) {
           await SharedPreference.setRememberData(
             userName: userNameController.text,
             password: passwordController.text,
           );
         }
-        
+
         await SharedPreference.saveUserNameandPassword(
           userName: userNameController.text,
           password: passwordController.text,
@@ -239,13 +310,15 @@ class LoginController extends GetxController {
         // REQUERIMIENTO V1.2.9: Inyección forzada de dependencias en AutoLogin (Garantizar estabilidad)
         try {
           final sharedPrefs = await SharedPreferences.getInstance();
-          Get.put(DashboardController(preferences: sharedPrefs), permanent: true);
+          Get.put(DashboardController(preferences: sharedPrefs),
+              permanent: true);
           Get.put(MainController(), permanent: true);
           Get.put(NetworkController(preferences: sharedPrefs), permanent: true);
-          Get.put(BannerAndLinksController(preferences: sharedPrefs), permanent: true);
+          Get.put(BannerAndLinksController(preferences: sharedPrefs),
+              permanent: true);
           Get.put(PaymentDetailController(), permanent: true);
           Get.put(AwardLevelsController(), permanent: true);
-          
+
           final dashboard = Get.find<DashboardController>();
           dashboard.updateUserData(userModel);
           dashboard.getDashboardData();
@@ -256,9 +329,10 @@ class LoginController extends GetxController {
         if (context.mounted) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (context) => const MainPage()),
-                (route) => false,
+            (route) => false,
           );
-          Utils.showSnackBar(context, userModel.message ?? "Inicio de sesión exitoso");
+          Utils.showSnackBar(
+              context, userModel.message ?? "Inicio de sesión exitoso");
         }
       } else {
         changeAutoLoading(false);
@@ -281,55 +355,70 @@ class LoginController extends GetxController {
   // REQUERIMIENTO v5.0.0: Login con Google
   Future<void> signInWithGoogle(BuildContext context) async {
     try {
+      final GoogleSignIn? googleSignIn = _getGoogleSignIn();
+      if (googleSignIn == null) {
+        _showLoginErrorSnackBar(
+          context,
+          "Google Sign-In está deshabilitado en web local hasta configurar el client ID.",
+        );
+        return;
+      }
+
       chnageLoading(true);
-      
+
       // 1. Iniciar sesión con Google
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
       if (googleUser == null) {
         chnageLoading(false);
         return; // Usuario canceló
       }
 
       // 2. Obtener idToken
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final String? idToken = googleAuth.idToken;
 
       if (idToken == null || idToken.isEmpty) {
         chnageLoading(false);
-        _showLoginErrorSnackBar(context, "No se pudo obtener el token de identidad de Google.");
+        _showLoginErrorSnackBar(
+            context, "No se pudo obtener el token de identidad de Google.");
         return;
       }
 
       // 3. POST al servidor propio
-      final bodyParams = { "id_token": idToken };
+      final bodyParams = {"id_token": idToken};
       debugPrint('📤 [GOOGLE LOGIN]: Enviando idToken al servidor...');
-      
-      final value = await ApiService.instance.postData('api/google_login', bodyParams);
-      
+
+      final value =
+          await ApiService.instance.postData('api/google_login', bodyParams);
+
       if (value == null) {
         chnageLoading(false);
-        _showLoginErrorSnackBar(context, "Error de conexión con el servidor de autenticación.");
+        _showLoginErrorSnackBar(
+            context, "Error de conexión con el servidor de autenticación.");
         return;
       }
 
       UserModel userModel = UserModel.fromJson(value);
-      final String mensajeError = userModel.message ?? "Error en autenticación Google";
-      
+      final String mensajeError =
+          userModel.message ?? "Error en autenticación Google";
+
       if (userModel.status != null && (userModel.status ?? false)) {
         // 4. Persistencia Idéntica al Login Normal
         if (userModel.data?.token != null) {
           await SessionManager.instance.setToken(userModel.data!.token!);
         }
 
-        final int? extractedId = SessionManager.extractUserId(value['data'] ?? value);
+        final int? extractedId =
+            SessionManager.extractUserId(value['data'] ?? value);
         if (extractedId != null && extractedId > 0) {
           final String idStr = extractedId.toString();
           await SessionManager.instance.setUserId(idStr);
           AcademyService.globalUserId = idStr;
 
-          // 5. Registro FCM con retry (Reutilizando NotificationService v4.1.0)
-          await NotificationService().registerFCMTokenIfReady();
+          // 5. Sincronización secundaria: nunca debe bloquear el login.
+          unawaited(_syncNotificationsAfterLogin());
         }
 
         // GUARDAR MODELO Y NAVEGAR
@@ -341,7 +430,8 @@ class LoginController extends GetxController {
         Get.put(DashboardController(preferences: sharedPrefs), permanent: true);
         Get.put(MainController(), permanent: true);
         Get.put(NetworkController(preferences: sharedPrefs), permanent: true);
-        Get.put(BannerAndLinksController(preferences: sharedPrefs), permanent: true);
+        Get.put(BannerAndLinksController(preferences: sharedPrefs),
+            permanent: true);
         Get.put(PaymentDetailController(), permanent: true);
         Get.put(AwardLevelsController(), permanent: true);
 
@@ -355,11 +445,11 @@ class LoginController extends GetxController {
         chnageLoading(false);
         _showLoginErrorSnackBar(context, mensajeError);
       }
-      
     } catch (e) {
       chnageLoading(false);
       debugPrint('❌ [GOOGLE LOGIN ERROR]: $e');
-      _showLoginErrorSnackBar(context, "Error inesperado al conectar con Google.");
+      _showLoginErrorSnackBar(
+          context, "Error inesperado al conectar con Google.");
     }
   }
 
@@ -393,16 +483,19 @@ class LoginController extends GetxController {
     update();
     try {
       // TAREA: Nuevo Endpoint Real (v1.2.9)
-      final response = await http.get(Uri.parse('https://embajadoresx.com/api/get_public_stats'));
-      
+      final response = await http
+          .get(Uri.parse('https://embajadoresx.com/api/get_public_stats'));
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data != null && data['status'] == true) {
           // TAREA: Mapeo exacto de campos del JSON real
           final rawUsers = data['total_users']?.toString() ?? "0";
-          final formattedPaid = data['formatted_paid_withdrawals']?.toString() ?? "\$0.00";
+          final formattedPaid =
+              data['formatted_paid_withdrawals']?.toString() ?? "\$0.00";
 
-          totalEmbajadores.value = _formatNumberWithCommas(num.tryParse(rawUsers) ?? 0);
+          totalEmbajadores.value =
+              _formatNumberWithCommas(num.tryParse(rawUsers) ?? 0);
           totalPagados.value = formattedPaid;
         }
       }
@@ -457,9 +550,10 @@ class LoginController extends GetxController {
     update();
   }
 
-  Future<void> loginUser(BuildContext context, GlobalKey<FormState> formKey) async {
+  Future<void> loginUser(
+      BuildContext context, GlobalKey<FormState> formKey) async {
     // debugPrint('inputText : ${userNameController.text}');
-    
+
     // REGLA DE ORO: Bloqueo de múltiples clics por isLoading
     if (_isLoading) return;
 
@@ -471,56 +565,28 @@ class LoginController extends GetxController {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
       try {
-        // Handle device type for both web and mobile
-        String deviceType;
-        if (kIsWeb) {
-          deviceType = "3"; // Web platform
-        } else {
-          deviceType = Platform.isAndroid
-              ? "1"
-              : Platform.isIOS
-                  ? "2"
-                  : "1";
-        }
-
-        // REQUERIMIENTO v4.3.0: Asegurar Token FCM antes del Login (Evitar device_token vacío)
-        String? fcmToken = await NotificationService().getToken();
-        int retries = 0;
-        while ((fcmToken == null || fcmToken.isEmpty) && retries < 3) {
-          debugPrint('⏳ [LOGIN] Token FCM nulo, reintentando ($retries/3)...');
-          await Future.delayed(const Duration(seconds: 1));
-          fcmToken = await NotificationService().getToken();
-          retries++;
-        }
-
-        if (fcmToken == null || fcmToken.isEmpty) {
-          chnageLoading(false);
-          if (context.mounted) {
-            _showLoginErrorSnackBar(context, "No se pudo sincronizar el token de notificaciones. Verifica tu conexión a internet.");
-          }
-          return;
-        }
-
         Map<String, String> bodyParams = {
           "username": userNameController.text.trim(),
           "password": passwordController.text.trim(),
-          "device_type": "android",
-          "device_token": fcmToken,
+          "is_vendor": isVendor.toString(),
         };
 
         // REQUERIMIENTO v4.4.0: Log de depuración para investigar 422
-        print('📤 [LOGIN BODY]: username=${bodyParams["username"]} | password=${bodyParams["password"]} | device_type=${bodyParams["device_type"]} | device_token=${bodyParams["device_token"]}');
+        print(
+            '📤 [LOGIN BODY]: username=${bodyParams["username"]} | password=${bodyParams["password"]} | is_vendor=${bodyParams["is_vendor"]}');
 
-        final value = await ApiService.instance.postData('User/login', bodyParams);
+        final value =
+            await ApiService.instance.postData('User/login', bodyParams);
         if (value == null) {
           _showLoginErrorSnackBar(context, "Error desconocido en el servidor");
           return;
         }
         UserModel userModel = UserModel.fromJson(value);
-        final String mensajeError = userModel.message ?? "Error desconocido en el servidor";
-        String status = userModel.data?.userStatus ?? "";
+        final String mensajeError =
+            userModel.message ?? "Error desconocido en el servidor";
+        final String status = _normalizeUserStatus(userModel.data?.userStatus);
 
-        if (status == "membership-status-expired") {
+        if (_isMembershipExpired(status)) {
           chnageLoading(false);
           Navigator.pushReplacement(
             context,
@@ -529,41 +595,52 @@ class LoginController extends GetxController {
           return;
         }
 
-        if (status != "ok" || (userModel.status != null && !(userModel.status ?? true))) {
+        if (!_hasSuccessfulAuth(userModel)) {
           chnageLoading(false);
           _showLoginErrorSnackBar(context, mensajeError);
           return;
         }
 
-        if (userModel.status != null && (userModel.status ?? false)) {
+        if (_shouldBlockByUserStatus(status)) {
+          chnageLoading(false);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const BlockedUserPage()),
+          );
+          return;
+        }
+
+        if (_hasSuccessfulAuth(userModel)) {
           // Guardar Token
           if (userModel.data?.token != null) {
             await SessionManager.instance.setToken(userModel.data!.token!);
           }
 
           // Unificar extracción de ID y persistencia (v4.0.0)
-          final int? extractedId = SessionManager.extractUserId(value['data'] ?? value);
+          final int? extractedId =
+              SessionManager.extractUserId(value['data'] ?? value);
           if (extractedId != null && extractedId > 0) {
             final String idStr = extractedId.toString();
             await SessionManager.instance.setUserId(idStr);
             AcademyService.globalUserId = idStr;
-            
-            // Trigger FCM (Paso 3)
-            await NotificationService().registerFCMTokenIfReady();
+
+            // Sincronización secundaria: nunca debe bloquear el login.
+            unawaited(_syncNotificationsAfterLogin());
           } else {
-            debugPrint('⚠️ [LOGIN] No se encontró userId válido en la respuesta inicial.');
+            debugPrint(
+                '⚠️ [LOGIN] No se encontró userId válido en la respuesta inicial.');
           }
-          
+
           // Esperar a que el modelo completo se guarde
           await SharedPreference.setUserData(userModel);
-          
+
           if (rememberMe) {
             await SharedPreference.setRememberData(
               userName: userNameController.text,
               password: passwordController.text,
             );
           }
-          
+
           await SharedPreference.saveUserNameandPassword(
             userName: userNameController.text,
             password: passwordController.text,
@@ -576,13 +653,16 @@ class LoginController extends GetxController {
           // Esto soluciona el error "Unexpected null value" al re-ingresar tras un Logout.
           try {
             final sharedPrefs = await SharedPreferences.getInstance();
-            Get.put(DashboardController(preferences: sharedPrefs), permanent: true);
+            Get.put(DashboardController(preferences: sharedPrefs),
+                permanent: true);
             Get.put(MainController(), permanent: true);
-            Get.put(NetworkController(preferences: sharedPrefs), permanent: true);
-            Get.put(BannerAndLinksController(preferences: sharedPrefs), permanent: true);
+            Get.put(NetworkController(preferences: sharedPrefs),
+                permanent: true);
+            Get.put(BannerAndLinksController(preferences: sharedPrefs),
+                permanent: true);
             Get.put(PaymentDetailController(), permanent: true);
             Get.put(AwardLevelsController(), permanent: true);
-            
+
             // Sincronizar el DashboardController con los nuevos datos
             final dashboard = Get.find<DashboardController>();
             dashboard.updateUserData(userModel);
@@ -597,10 +677,12 @@ class LoginController extends GetxController {
               MaterialPageRoute(builder: (context) => const MainPage()),
               (route) => false,
             );
-            Utils.showSnackBar(context, userModel.message ?? "Inicio de sesión exitoso");
+            Utils.showSnackBar(
+                context, userModel.message ?? "Inicio de sesión exitoso");
           }
         } else {
-          Utils.showSnackBar(context, userModel.message ?? "Error en el inicio de sesión");
+          Utils.showSnackBar(
+              context, userModel.message ?? "Error en el inicio de sesión");
         }
       } catch (e) {
         debugPrint("Login Error: $e");
@@ -613,7 +695,8 @@ class LoginController extends GetxController {
     }
   }
 
-  Future<void> registerUser(BuildContext context, isVendor, GlobalKey<FormState> formKey) async {
+  Future<void> registerUser(
+      BuildContext context, isVendor, GlobalKey<FormState> formKey) async {
     if (formKey.currentState?.validate() ?? false) {
       chnageLoading(true);
       update();
@@ -622,7 +705,11 @@ class LoginController extends GetxController {
       if (kIsWeb) {
         deviceType = "3";
       } else {
-        deviceType = Platform.isAndroid ? "1" : Platform.isIOS ? "2" : "1";
+        deviceType = Platform.isAndroid
+            ? "1"
+            : Platform.isIOS
+                ? "2"
+                : "1";
       }
 
       Map<String, String> bodyParams = {
@@ -641,11 +728,13 @@ class LoginController extends GetxController {
       };
 
       try {
-        final value = await ApiService.instance.postData('User/registarion', bodyParams);
+        final value =
+            await ApiService.instance.postData('User/registarion', bodyParams);
 
         if (value != null && value is Map<String, dynamic>) {
           if (value['status'] == true) {
-            snackBar(context, "Registration Successful", AppColor.appPrimary, AppColor.appWhite);
+            snackBar(context, "Registration Successful", AppColor.appPrimary,
+                AppColor.appWhite);
             Navigator.of(context).pushReplacement(MaterialPageRoute(
               builder: (context) => const LoginPage(),
             ));
@@ -660,7 +749,8 @@ class LoginController extends GetxController {
             snackBar(context, errorMessage, Colors.red, AppColor.appWhite);
           }
         } else {
-          snackBar(context, "Unexpected response from server", Colors.red, AppColor.appWhite);
+          snackBar(context, "Unexpected response from server", Colors.red,
+              AppColor.appWhite);
         }
       } catch (e) {
         print("Exception:");
