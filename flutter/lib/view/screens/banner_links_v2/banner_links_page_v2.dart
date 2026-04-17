@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'package:affiliatepro_mobile/controller/bannerAndLinks_controller.dart';
 import 'package:affiliatepro_mobile/controller/main_controller.dart';
@@ -368,6 +370,9 @@ class _MarketCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String shareUrl =
+        item.share_url.isNotEmpty ? item.share_url : item.public_page;
+
     return ExGlassCard(
       radius: 28,
       padding: EdgeInsets.all(compact ? 14 : 16),
@@ -473,9 +478,29 @@ class _MarketCard extends StatelessWidget {
             child: ExNeonButton(
               label: 'Copiar enlace',
               compact: true,
-              onTap: () {},
+              onTap: () async {
+                if (shareUrl.isEmpty) return;
+                await Clipboard.setData(ClipboardData(text: shareUrl));
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Enlace copiado'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
             ),
           ),
+          if (shareUrl.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                onPressed: () => Share.share(shareUrl),
+                icon: const Icon(Icons.share_outlined, color: Colors.white70),
+              ),
+            ),
+          ],
         ],
       ),
     );

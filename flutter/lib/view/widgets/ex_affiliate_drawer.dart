@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 
 import 'package:affiliatepro_mobile/controller/dashboard_controller.dart';
 import 'package:affiliatepro_mobile/controller/main_controller.dart';
-import 'package:affiliatepro_mobile/view/screens/Menu/benefits/benefits.dart';
+import 'package:affiliatepro_mobile/view/screens/benefits_v2/benefits_page_v2.dart';
 import 'package:affiliatepro_mobile/view/screens/notifications/notifications.dart';
 import 'package:affiliatepro_mobile/view/screens/profile/profile.dart';
 import 'package:affiliatepro_mobile/view/theme/ex_futuristic_theme.dart';
@@ -134,7 +134,7 @@ class ExAffiliateDrawer extends StatelessWidget {
                               label: 'Beneficios EX',
                               onTap: () {
                                 Navigator.of(context).pop();
-                                Get.to(() => const BenefitsPage());
+                                Get.to(() => const BenefitsPageV2());
                               },
                             ),
                             _DrawerItem(

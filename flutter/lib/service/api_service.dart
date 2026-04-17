@@ -201,12 +201,26 @@ class ApiService {
       dynamic dataToSend = body;
       Options options = Options(headers: Map.from(headers));
 
-      // REQUERIMIENTO v4.5.1: Forzar FormData y multipart/form-data en Login para evitar 422 (vía Turn 422 Fix)
+      // El endpoint móvil de login responde correctamente con x-www-form-urlencoded.
+      // multipart/form-data introduce diferencias innecesarias frente al flujo real.
       if (endPoint.contains('User/login') && body is Map) {
-        dataToSend = FormData.fromMap(body as Map<String, dynamic>);
-        options.contentType = 'multipart/form-data';
-        debugPrint(
-            '🛠️ [FIX 422] Convirtiendo body a FormData y forzando multipart/form-data');
+        final response = await http.post(
+          Uri.parse(url),
+          headers: const {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json',
+          },
+          body: body.map((key, value) => MapEntry(key.toString(), '$value')),
+        );
+
+        debugPrint('[LOGIN HTTP] STATUS: ${response.statusCode}');
+        debugPrint('[LOGIN HTTP] BODY: ${response.body}');
+
+        if (response.body.trim().isEmpty) {
+          return null;
+        }
+
+        return jsonDecode(response.body);
       }
 
       // REQUERIMIENTO v5.0.1: Forzar JSON para Google Login

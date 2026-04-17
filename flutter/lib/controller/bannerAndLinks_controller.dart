@@ -17,9 +17,9 @@ class BannerAndLinksController extends GetxController {
   BannerAndLinksModel? _bannerAndLinksModel;
   bool isGridView = false;
   bool isAdmin = false; // Cache para UI sincrónica
-  
+
   // 🎛️ [FILTROS] - Sistema de ruteo dinámico (v1.5.2)
-  String currentMarketView = "favorites"; // favorites, all, hot
+  String currentMarketView = "all"; // favorites, all, hot
   String? selectedCategoryId;
   String? selectedMarketCategoryId;
   String searchQuery = "";
@@ -57,7 +57,7 @@ class BannerAndLinksController extends GetxController {
     selectedCategoryId = null;
     selectedMarketCategoryId = null;
     searchQuery = "";
-    currentMarketView = "favorites"; // Reset al favorito por defecto
+    currentMarketView = "all"; // Reset al catálogo principal
     getBannerAndLinksData();
   }
 
@@ -65,7 +65,7 @@ class BannerAndLinksController extends GetxController {
   void processDeepLinkNavigation(String productId, bool forceGlobal) {
     pendingProductId = productId;
     forceGlobalDeepLink = forceGlobal;
-    
+
     if (forceGlobal) {
       currentMarketView = "all";
       selectedCategoryId = null;
@@ -96,7 +96,8 @@ class BannerAndLinksController extends GetxController {
   void updateBannerAndLinksData(BannerAndLinksModel model) {
     // 🚀 [PRODUCCIÓN] Ordenamiento Automático: Los productos "Hot" primero (v1.4.8)
     if (model.data.isNotEmpty) {
-      print("🌟 [PRODUCCIÓN] Mock eliminado. Ordenamiento automático aplicado. Data real 100% operativa.");
+      print(
+          "🌟 [PRODUCCIÓN] Mock eliminado. Ordenamiento automático aplicado. Data real 100% operativa.");
       model.data.sort((a, b) {
         if (a.isTopHot && !b.isTopHot) return -1;
         if (!a.isTopHot && b.isTopHot) return 1;
@@ -108,7 +109,7 @@ class BannerAndLinksController extends GetxController {
     if (currentMarketView == "all") {
       allProducts = List.from(model.data);
     }
-    
+
     // Si el caché está vacío y recibimos datos de favoritos, los usamos como fallback inicial
     if (allProducts.isEmpty && model.data.isNotEmpty) {
       allProducts = List.from(model.data);
@@ -121,7 +122,7 @@ class BannerAndLinksController extends GetxController {
   /// REQUERIMIENTO v1.4.3: Recuperación robusta del ID del usuario (Fallback Multinivel)
   dynamic _getUserId() {
     dynamic userId;
-    
+
     // Nivel 1: DashboardController (Dato en memoria caliente)
     if (Get.isRegistered<DashboardController>()) {
       try {
@@ -156,35 +157,38 @@ class BannerAndLinksController extends GetxController {
     changeBannerAndLinksLoading(true);
     final userModel = await SharedPreference.getUserData();
     final token = userModel?.data?.token;
-    
+
     // TAREA: Usar el nuevo método robusto de obtención de ID
     final userId = _getUserId();
-    
+
     if (userId == null || userId.toString().isEmpty) {
-      debugPrint("⚠️ [MARKETPLACE] Alerta: No se encontró User ID tras 3 niveles de búsqueda.");
+      debugPrint(
+          "⚠️ [MARKETPLACE] Alerta: No se encontró User ID tras 3 niveles de búsqueda.");
     }
 
     final String userIdent = userId?.toString() ?? 'N/A';
-    
+
     // 🧱 [SYNC] Actualizar flag de admin para la UI
     isAdmin = userIdent == '1' || (userModel?.data?.isAdmin ?? false);
 
     // 🎛️ [TASK 1.5.2] - Filtro Global Dinámico (Apertura de Catálogo)
     // - Mis Favoritos (favorites) -> admin_view=false
     // - Todos (all) o Caliente (hot) -> admin_view=true
-    bool isGlobalView = currentMarketView == "all" || currentMarketView == "hot";
+    bool isGlobalView =
+        currentMarketView == "all" || currentMarketView == "hot";
     String adminParam = isGlobalView ? "true" : "false";
 
     if (isAdmin) {
       if (currentMarketView == "favorites" && userIdent != '1') {
       } else {
-         adminParam = "true";
+        adminParam = "true";
       }
     }
 
     String endPoint = 'api/get_market_products?admin_view=$adminParam';
-    print("🎛️ [FILTROS] Vista actual: $currentMarketView | admin_view: $adminParam | UI Premium cargada.");
-    
+    print(
+        "🎛️ [FILTROS] Vista actual: $currentMarketView | admin_view: $adminParam | UI Premium cargada.");
+
     if (userId != null) {
       endPoint += '&user_id=${userId.toString()}';
     }
@@ -194,7 +198,8 @@ class BannerAndLinksController extends GetxController {
     if (selectedCategoryId != null && selectedCategoryId!.isNotEmpty) {
       endPoint += '&category_id=${selectedCategoryId!}';
     }
-    if (selectedMarketCategoryId != null && selectedMarketCategoryId!.isNotEmpty) {
+    if (selectedMarketCategoryId != null &&
+        selectedMarketCategoryId!.isNotEmpty) {
       endPoint += '&market_category_id=${selectedMarketCategoryId!}';
     }
 
@@ -202,7 +207,7 @@ class BannerAndLinksController extends GetxController {
 
     try {
       final value = await ApiService.instance.getData(endPoint, token: token);
-      
+
       debugPrint('Get BannerAndLinks (SERVER RAW): $value');
 
       if (value != null &&
@@ -211,14 +216,19 @@ class BannerAndLinksController extends GetxController {
           value['status'] == true &&
           value.containsKey('data') &&
           value['data'] != null) {
-        
         BannerAndLinksModel model = BannerAndLinksModel.fromJson(value);
-        
+
         // 🔥 [TASK] - Filtrado local para "Productos Candentes"
         if (currentMarketView == "hot") {
           model.data = model.data.where((p) => p.isTopHot).toList();
         }
-        
+
+        if (model.data.isEmpty && currentMarketView == "favorites") {
+          currentMarketView = "all";
+          await getBannerAndLinksData();
+          return;
+        }
+
         updateBannerAndLinksData(model);
       } else {
         updateBannerAndLinksData(BannerAndLinksModel(
@@ -247,24 +257,29 @@ class BannerAndLinksController extends GetxController {
     final userModel = await SharedPreference.getUserData();
     final token = userModel?.data?.token;
     final userId = _getUserId();
-    
+
     // Forzamos admin_view=true para obtener todo
     String endPoint = 'api/get_market_products?admin_view=true';
     if (userId != null) endPoint += '&user_id=${userId.toString()}';
 
     try {
       final value = await ApiService.instance.getData(endPoint, token: token);
-      if (value != null && value is Map<String, dynamic> && value['status'] == true && value['data'] != null) {
+      if (value != null &&
+          value is Map<String, dynamic> &&
+          value['status'] == true &&
+          value['data'] != null) {
         BannerAndLinksModel model = BannerAndLinksModel.fromJson(value);
         allProducts = List.from(model.data);
-        print("✅ [IA CENTER] Caché global actualizado con ${allProducts.length} productos.");
+        print(
+            "✅ [IA CENTER] Caché global actualizado con ${allProducts.length} productos.");
       }
     } catch (e) {
       debugPrint('Error loading full catalog for cache: $e');
     }
   }
 
-  Future<MarketingMaterialModel?> getMarketingMaterials(String productId) async {
+  Future<MarketingMaterialModel?> getMarketingMaterials(
+      String productId) async {
     if (productId.isEmpty || productId == "0") {
       debugPrint('Error: Product ID is invalid or empty: $productId');
       return MarketingMaterialModel(
@@ -273,10 +288,10 @@ class BannerAndLinksController extends GetxController {
         data: [],
       );
     }
-    
+
     final userModel = await SharedPreference.getUserData();
     final token = userModel?.data?.token;
-    
+
     final endPoints = [
       'api/get_marketing_materials/$productId',
       'get_marketing_materials/$productId',
@@ -299,7 +314,7 @@ class BannerAndLinksController extends GetxController {
         debugPrint('Error en $endPoint: $e');
       }
     }
-    
+
     return MarketingMaterialModel(
       status: false,
       message: 'No se encontraron materiales tras varios intentos',

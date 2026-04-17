@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:affiliatepro_mobile/helper/get_di.dart' as di;
 import 'package:affiliatepro_mobile/view/screens/login/login.dart';
 import 'package:affiliatepro_mobile/config/app_config.dart';
+import 'package:affiliatepro_mobile/config/firebase_web_options.dart';
 import 'package:affiliatepro_mobile/utils/colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:affiliatepro_mobile/utils/preference.dart';
@@ -19,30 +20,33 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // TAREA: Inicialización de Firebase (v2.0.0)
-  if (!(kDebugMode && kIsWeb)) {
-    try {
+  try {
+    if (kIsWeb) {
+      await Firebase.initializeApp(
+        options: FirebaseWebOptions.currentPlatform,
+      );
+    } else {
       await Firebase.initializeApp();
+    }
 
+    if (!kIsWeb) {
       // Registrar manejador de segundo plano
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-
-      // Inicializar servicio de notificaciones
-      final notificationService = NotificationService();
-      await notificationService.initialize();
-
-      // REQUERIMIENTO ESPECIAL: TOKEN VISIBLE PARA TESTING
-      String? token = await FirebaseMessaging.instance.getToken();
-      print('-----------------------------------------');
-      print('🚀 TOKEN PARA MI AMIGO: $token');
-      print('-----------------------------------------');
-
-      debugPrint('🔥 [FIREBASE] Inicializado con éxito');
-    } catch (e) {
-      debugPrint('❌ [FIREBASE] Error de inicialización: $e');
     }
-  } else {
-    debugPrint(
-        '🧪 [FIREBASE] Bypass local activado para Flutter web en modo debug.');
+
+    // Inicializar servicio de notificaciones
+    final notificationService = NotificationService();
+    await notificationService.initialize();
+
+    // REQUERIMIENTO ESPECIAL: TOKEN VISIBLE PARA TESTING
+    String? token = await FirebaseMessaging.instance.getToken();
+    print('-----------------------------------------');
+    print('🚀 TOKEN PARA MI AMIGO: $token');
+    print('-----------------------------------------');
+
+    debugPrint('🔥 [FIREBASE] Inicializado con éxito');
+  } catch (e) {
+    debugPrint('❌ [FIREBASE] Error de inicialización: $e');
   }
 
   // TAREA 3: LOG DE INICIO

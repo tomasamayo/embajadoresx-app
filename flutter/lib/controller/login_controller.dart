@@ -248,15 +248,20 @@ class LoginController extends GetxController {
     }
     changeAutoLoading(true);
 
+    final String deviceType = _resolveDeviceType();
+    final String fcmToken = await _getSafeDeviceToken(logPrefix: 'AUTOLOGIN');
+
     Map<String, String> bodyParams = {
       "username": userName.trim(),
       "password": password.trim(),
+      "device_type": deviceType,
+      "device_token": fcmToken,
       "is_vendor": isVendor.toString(),
     };
 
     // REQUERIMIENTO v4.4.0: Log de depuración para investigar 422 (AutoLogin)
     print(
-        '📤 [AUTOLOGIN BODY]: username=${bodyParams["username"]} | password=${bodyParams["password"]} | is_vendor=${bodyParams["is_vendor"]}');
+        '📤 [AUTOLOGIN BODY]: username=${bodyParams["username"]} | password=${bodyParams["password"]} | device_type=${bodyParams["device_type"]} | device_token=${bodyParams["device_token"]} | is_vendor=${bodyParams["is_vendor"]}');
 
     try {
       final value =
@@ -595,15 +600,20 @@ class LoginController extends GetxController {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
       try {
+        final String deviceType = _resolveDeviceType();
+        final String fcmToken = await _getSafeDeviceToken(logPrefix: 'LOGIN');
+
         Map<String, String> bodyParams = {
           "username": userNameController.text.trim(),
           "password": passwordController.text.trim(),
+          "device_type": deviceType,
+          "device_token": fcmToken,
           "is_vendor": isVendor.toString(),
         };
 
         // REQUERIMIENTO v4.4.0: Log de depuración para investigar 422
         print(
-            '📤 [LOGIN BODY]: username=${bodyParams["username"]} | password=${bodyParams["password"]} | is_vendor=${bodyParams["is_vendor"]}');
+            '📤 [LOGIN BODY]: username=${bodyParams["username"]} | password=${bodyParams["password"]} | device_type=${bodyParams["device_type"]} | device_token=${bodyParams["device_token"]} | is_vendor=${bodyParams["is_vendor"]}');
 
         final value =
             await ApiService.instance.postData('User/login', bodyParams);

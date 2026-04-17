@@ -29,7 +29,7 @@ class NotificationService {
   String? _lastRegisteredUserId;
   String? _lastRegisteredToken;
 
-  bool get _isLocalWebDebugBypass => kDebugMode && kIsWeb;
+  bool get _isLocalWebDebugBypass => false;
 
   FirebaseMessaging? get _firebaseMessaging {
     if (_isLocalWebDebugBypass) {
