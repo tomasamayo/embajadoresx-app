@@ -156,11 +156,41 @@ class LoginController extends GetxController {
     return status != "ok" && status != "active" && status != "approved";
   }
 
-  bool _hasSuccessfulAuth(UserModel userModel) {
+  bool _isTokenSyncMessage(String? message) {
+    final lower = message?.trim().toLowerCase() ?? '';
+    return lower.contains('sincronizar el token') ||
+        lower.contains('token de notificaciones') ||
+        lower.contains('notification token');
+  }
+
+  bool _rawResponseHasToken(Map<String, dynamic> value) {
+    final dynamic data = value['data'];
+    if (data is Map<String, dynamic>) {
+      final token = data['token']?.toString().trim() ?? '';
+      return token.isNotEmpty;
+    }
+    final token = value['token']?.toString().trim() ?? '';
+    return token.isNotEmpty;
+  }
+
+  bool _hasSuccessfulAuth(UserModel userModel, Map<String, dynamic> rawValue) {
     final bool apiStatus = userModel.status ?? false;
-    final bool hasToken =
+    final bool hasTokenFromModel =
         (userModel.data?.token?.toString().trim().isNotEmpty ?? false);
-    return apiStatus && hasToken;
+    final bool hasTokenFromRaw = _rawResponseHasToken(rawValue);
+
+    if (apiStatus && (hasTokenFromModel || hasTokenFromRaw)) {
+      return true;
+    }
+
+    if (_isTokenSyncMessage(userModel.message) &&
+        (hasTokenFromModel || hasTokenFromRaw)) {
+      debugPrint(
+          '⚠️ [LOGIN] Backend reportó problema de token de notificaciones, pero la sesión ya tiene token válido. Continuando login.');
+      return true;
+    }
+
+    return false;
   }
 
   GoogleSignIn? _getGoogleSignIn() {
@@ -254,7 +284,7 @@ class LoginController extends GetxController {
         return;
       }
 
-      if (!_hasSuccessfulAuth(userModel)) {
+      if (!_hasSuccessfulAuth(userModel, value)) {
         changeAutoLoading(false);
         if (context.mounted) {
           _showLoginErrorSnackBar(context, mensajeError);
@@ -273,7 +303,7 @@ class LoginController extends GetxController {
         return;
       }
 
-      if (_hasSuccessfulAuth(userModel)) {
+      if (_hasSuccessfulAuth(userModel, value)) {
         // Guardar Token
         if (userModel.data?.token != null) {
           await SessionManager.instance.setToken(userModel.data!.token!);
@@ -595,7 +625,7 @@ class LoginController extends GetxController {
           return;
         }
 
-        if (!_hasSuccessfulAuth(userModel)) {
+        if (!_hasSuccessfulAuth(userModel, value)) {
           chnageLoading(false);
           _showLoginErrorSnackBar(context, mensajeError);
           return;
@@ -610,7 +640,7 @@ class LoginController extends GetxController {
           return;
         }
 
-        if (_hasSuccessfulAuth(userModel)) {
+        if (_hasSuccessfulAuth(userModel, value)) {
           // Guardar Token
           if (userModel.data?.token != null) {
             await SessionManager.instance.setToken(userModel.data!.token!);
