@@ -11,6 +11,7 @@ import 'package:affiliatepro_mobile/view/widgets/ex_affiliate_drawer.dart';
 import 'package:affiliatepro_mobile/view/widgets/ex_fx_background.dart';
 import 'package:affiliatepro_mobile/view/widgets/ex_glass_card.dart';
 import 'package:affiliatepro_mobile/view/widgets/ex_neon_button.dart';
+import 'package:affiliatepro_mobile/view/widgets/ex_remote_image.dart';
 
 class BannerLinksPageV2 extends StatefulWidget {
   const BannerLinksPageV2({super.key});
@@ -372,7 +373,6 @@ class _MarketCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final String shareUrl =
         item.share_url.isNotEmpty ? item.share_url : item.public_page;
-
     return ExGlassCard(
       radius: 28,
       padding: EdgeInsets.all(compact ? 14 : 16),
@@ -389,6 +389,7 @@ class _MarketCard extends StatelessWidget {
           (item.isTopHot ? ExFuturisticTheme.amber : ExFuturisticTheme.primary)
               .withOpacity(0.14),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           AspectRatio(
@@ -397,20 +398,11 @@ class _MarketCard extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(22),
                 color: Colors.white.withOpacity(0.04),
-                image: item.fevi_icon.isNotEmpty
-                    ? DecorationImage(
-                        image: NetworkImage(item.fevi_icon),
-                        fit: BoxFit.cover,
-                        onError: (_, __) {},
-                      )
-                    : null,
               ),
-              child: item.fevi_icon.isEmpty
-                  ? const Center(
-                      child: Icon(Icons.image_not_supported_outlined,
-                          color: Colors.white30, size: 32),
-                    )
-                  : null,
+              child: ExRemoteImage(
+                imageUrl: item.fevi_icon,
+                borderRadius: BorderRadius.circular(22),
+              ),
             ),
           ),
           const SizedBox(height: 14),
@@ -450,7 +442,6 @@ class _MarketCard extends StatelessWidget {
               fontFamily: 'Poppins',
             ),
           ),
-          const Spacer(),
           const SizedBox(height: 14),
           Row(
             children: <Widget>[

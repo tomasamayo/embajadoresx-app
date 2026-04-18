@@ -50,17 +50,21 @@ class SessionManager {
   Future<void> loadToken() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString(SharedPreference.TOKEN_KEY);
-    
+
     // Carga simple y directa
     _userId = prefs.getString('user_id');
-    
-    debugPrint('[SessionManager] CARGA COMPLETA -> Token: ' + (_token != null ? 'OK' : 'NULL') + ' | ID: ' + (_userId ?? 'NULL'));
+
+    debugPrint('[SessionManager] CARGA COMPLETA -> Token: ' +
+        (_token != null ? 'OK' : 'NULL') +
+        ' | ID: ' +
+        (_userId ?? 'NULL'));
   }
 
   Future<bool> setToken(String newToken) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      bool success = await prefs.setString(SharedPreference.TOKEN_KEY, newToken);
+      bool success =
+          await prefs.setString(SharedPreference.TOKEN_KEY, newToken);
       if (success) {
         _token = newToken;
       }
@@ -73,7 +77,8 @@ class SessionManager {
   Future<bool> setUserId(String newId) async {
     // GUARD: Evitar redundancia (v4.1.0)
     if (_userId == newId && newId.isNotEmpty) {
-      debugPrint('[SessionManager] ID ya persistido ($newId). Omitiendo escritura.');
+      debugPrint(
+          '[SessionManager] ID ya persistido ($newId). Omitiendo escritura.');
       return true;
     }
 
@@ -102,10 +107,10 @@ class SessionManager {
     await prefs.remove('user_id_int');
     _token = null;
     _userId = null;
-    
+
     // Resetear guards de FCM
     NotificationService().resetRegistrationGuard();
-    
+
     debugPrint('[SessionManager] Sesion limpiada');
   }
 }

@@ -7,6 +7,7 @@ import '../model/dashboard_model.dart';
 import '../model/marketing_material_model.dart';
 import '../service/api_service.dart';
 import '../utils/preference.dart';
+import '../utils/session_manager.dart';
 import 'dashboard_controller.dart';
 
 class BannerAndLinksController extends GetxController {
@@ -273,7 +274,7 @@ class BannerAndLinksController extends GetxController {
   }
 
   /// REQUERIMIENTO v1.4.3: Recuperación robusta del ID del usuario (Fallback Multinivel)
-  dynamic _getUserId() {
+  Future<dynamic> _getUserId() async {
     dynamic userId;
 
     // Nivel 1: DashboardController (Dato en memoria caliente)
@@ -285,6 +286,11 @@ class BannerAndLinksController extends GetxController {
           userId = dash.userId.value;
         }
       } catch (_) {}
+    }
+
+    // Nivel 1.5: SessionManager en RAM
+    if (userId == null || userId.toString().isEmpty) {
+      userId = SessionManager.instance.userId;
     }
 
     // Nivel 2: SharedPreferences (Persistencia directa de llaves simples)
@@ -303,6 +309,28 @@ class BannerAndLinksController extends GetxController {
       }
     }
 
+    // Nivel 4: endpoint confiable de detalles de usuario
+    if (userId == null || userId.toString().isEmpty) {
+      try {
+        final userModel = await SharedPreference.getUserData();
+        final token = userModel?.data?.token;
+        if (token != null && token.isNotEmpty) {
+          final dynamic response = await ApiService.instance
+              .getData('api/get_user_details', token: token);
+          if (response is Map<String, dynamic> &&
+              response['status'] == true &&
+              response['data'] is Map<String, dynamic>) {
+            final int? extractedId =
+                SessionManager.extractUserId(response['data']);
+            if (extractedId != null && extractedId > 0) {
+              userId = extractedId.toString();
+              await SessionManager.instance.setUserId(userId);
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
     return userId;
   }
 
@@ -312,7 +340,7 @@ class BannerAndLinksController extends GetxController {
     final token = userModel?.data?.token;
 
     // TAREA: Usar el nuevo método robusto de obtención de ID
-    final userId = _getUserId();
+    final userId = await _getUserId();
 
     if (userId == null || userId.toString().isEmpty) {
       debugPrint(
@@ -425,7 +453,7 @@ class BannerAndLinksController extends GetxController {
 
     final userModel = await SharedPreference.getUserData();
     final token = userModel?.data?.token;
-    final userId = _getUserId();
+    final userId = await _getUserId();
 
     // Forzamos admin_view=true para obtener todo
     String endPoint = 'api/get_market_products?admin_view=true';

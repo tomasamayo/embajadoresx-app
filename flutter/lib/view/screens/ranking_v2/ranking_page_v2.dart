@@ -10,6 +10,7 @@ import 'package:affiliatepro_mobile/view/theme/ex_futuristic_theme.dart';
 import 'package:affiliatepro_mobile/view/widgets/ex_affiliate_drawer.dart';
 import 'package:affiliatepro_mobile/view/widgets/ex_fx_background.dart';
 import 'package:affiliatepro_mobile/view/widgets/ex_glass_card.dart';
+import 'package:affiliatepro_mobile/view/widgets/ex_remote_image.dart';
 
 class RankingPageV2 extends StatefulWidget {
   const RankingPageV2({super.key});
@@ -335,20 +336,22 @@ class _PodiumCard extends StatelessWidget {
           CircleAvatar(
             radius: place == 1 ? 34 : 28,
             backgroundColor: accent.withOpacity(0.18),
-            backgroundImage:
-                user['avatar'] != null && user['avatar'].toString().isNotEmpty
-                    ? NetworkImage(user['avatar'].toString())
-                    : null,
-            child: user['avatar'] == null || user['avatar'].toString().isEmpty
-                ? Text(
+            child: ClipOval(
+              child: ExRemoteImage(
+                imageUrl: user['avatar']?.toString() ?? '',
+                fit: BoxFit.cover,
+                fallback: Center(
+                  child: Text(
                     name.isEmpty ? 'EX' : name.substring(0, 1).toUpperCase(),
                     style: TextStyle(
                       color: accent,
                       fontWeight: FontWeight.w800,
                       fontFamily: 'Poppins',
                     ),
-                  )
-                : null,
+                  ),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 10),
           Text(
@@ -418,20 +421,22 @@ class _RankingRow extends StatelessWidget {
           CircleAvatar(
             radius: 22,
             backgroundColor: ExFuturisticTheme.primary.withOpacity(0.14),
-            backgroundImage:
-                user['avatar'] != null && user['avatar'].toString().isNotEmpty
-                    ? NetworkImage(user['avatar'].toString())
-                    : null,
-            child: user['avatar'] == null || user['avatar'].toString().isEmpty
-                ? Text(
+            child: ClipOval(
+              child: ExRemoteImage(
+                imageUrl: user['avatar']?.toString() ?? '',
+                fit: BoxFit.cover,
+                fallback: Center(
+                  child: Text(
                     name.isEmpty ? 'E' : name.substring(0, 1).toUpperCase(),
                     style: const TextStyle(
                       color: ExFuturisticTheme.primary,
                       fontWeight: FontWeight.w700,
                       fontFamily: 'Poppins',
                     ),
-                  )
-                : null,
+                  ),
+                ),
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(

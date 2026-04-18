@@ -143,6 +143,48 @@ class LoginController extends GetxController {
     }
   }
 
+  Future<void> _hydrateUserIdAfterLogin(UserModel userModel) async {
+    final dynamic currentId = userModel.data?.userId;
+    if (currentId != null &&
+        currentId.toString().isNotEmpty &&
+        currentId.toString() != 'null') {
+      final String idStr = currentId.toString();
+      await SessionManager.instance.setUserId(idStr);
+      AcademyService.globalUserId = idStr;
+      return;
+    }
+
+    final String? token = userModel.data?.token;
+    if (token == null || token.isEmpty) {
+      return;
+    }
+
+    try {
+      final dynamic profile = await ApiService.instance
+          .getData('api/get_user_details', token: token);
+      if (profile is! Map<String, dynamic>) {
+        return;
+      }
+
+      final Map<String, dynamic> data = profile['data'] is Map<String, dynamic>
+          ? profile['data'] as Map<String, dynamic>
+          : profile;
+      final int? extractedId = SessionManager.extractUserId(data);
+      if (extractedId == null || extractedId <= 0) {
+        return;
+      }
+
+      final String idStr = extractedId.toString();
+      userModel.data?.userId = idStr;
+      await SessionManager.instance.setUserId(idStr);
+      AcademyService.globalUserId = idStr;
+      await SharedPreference.setUserData(userModel);
+      debugPrint('✅ [LOGIN] userId hidratado desde perfil: $idStr');
+    } catch (e) {
+      debugPrint('⚠️ [LOGIN] No se pudo hidratar userId desde perfil: $e');
+    }
+  }
+
   String _normalizeUserStatus(String? status) {
     return status?.trim().toLowerCase() ?? '';
   }
@@ -329,6 +371,7 @@ class LoginController extends GetxController {
         userNameController.text = userName;
 
         await SharedPreference.setUserData(userModel);
+        await _hydrateUserIdAfterLogin(userModel);
 
         if (rememberMe) {
           await SharedPreference.setRememberData(
@@ -458,6 +501,7 @@ class LoginController extends GetxController {
 
         // GUARDAR MODELO Y NAVEGAR
         await SharedPreference.setUserData(userModel);
+        await _hydrateUserIdAfterLogin(userModel);
 
         // Limpieza de GetX e Inyección de dependencias (Copiado de loginUser para asegurar estabilidad)
         Get.deleteAll(force: true);
@@ -673,6 +717,7 @@ class LoginController extends GetxController {
 
           // Esperar a que el modelo completo se guarde
           await SharedPreference.setUserData(userModel);
+          await _hydrateUserIdAfterLogin(userModel);
 
           if (rememberMe) {
             await SharedPreference.setRememberData(

@@ -7,8 +7,6 @@ import 'package:affiliatepro_mobile/controller/login_controller.dart';
 import 'package:affiliatepro_mobile/utils/text.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../utils/colors.dart';
-import '../../../utils/images.dart';
 import '../../base/custom_loader.dart';
 import '../../base/custom_text_field.dart';
 import '../../base/loading.dart';
@@ -17,7 +15,6 @@ import '../registration/registration.dart';
 import '../../../service/api_service.dart';
 import 'tech_background.dart';
 import 'vault_intro_overlay.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -226,6 +223,73 @@ class _LoginPageState extends State<LoginPage>
                       child: TechBackground(),
                     ),
 
+                    Positioned(
+                      top: 42,
+                      left: 0,
+                      right: 0,
+                      child: IgnorePointer(
+                        ignoring: true,
+                        child: FadeTransition(
+                          opacity: loginOpacity,
+                          child: ScaleTransition(
+                            scale: loginScale,
+                            child: AnimatedBuilder(
+                              animation: loginBlur,
+                              builder: (context, child) {
+                                return ImageFiltered(
+                                  imageFilter: ImageFilter.blur(
+                                    sigmaX: loginBlur.value,
+                                    sigmaY: loginBlur.value,
+                                  ),
+                                  child: child,
+                                );
+                              },
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 26,
+                                    vertical: 18,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(30),
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: <Color>[
+                                        const Color(0xFF0D1914)
+                                            .withOpacity(0.48),
+                                        const Color(0xFF111322)
+                                            .withOpacity(0.16),
+                                      ],
+                                    ),
+                                    border: Border.all(
+                                      color: const Color(0xFF00FF88)
+                                          .withOpacity(0.18),
+                                    ),
+                                    boxShadow: <BoxShadow>[
+                                      BoxShadow(
+                                        color: const Color(0xFF00FF88)
+                                            .withOpacity(0.14),
+                                        blurRadius: 42,
+                                        spreadRadius: 6,
+                                      ),
+                                    ],
+                                  ),
+                                  child: SizedBox(
+                                    width: width * 0.34,
+                                    child: Image.asset(
+                                      'assets/images/ex_logo.png',
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
                     // Main Content Structure
                     Column(
                       children: [
@@ -234,16 +298,16 @@ class _LoginPageState extends State<LoginPage>
                           child: IgnorePointer(
                             ignoring: !_introDone,
                             child: Container(
-                              margin: const EdgeInsets.only(
-                                  top:
-                                      60), // Reparación de diseño inmersivo: Logo respira a 60px tras eliminar franja negra
                               child: Form(
                                 key: _formKey,
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 15),
                                   child: ListView(
-                                    reverse: true,
+                                    padding: const EdgeInsets.only(
+                                      top: 212,
+                                      bottom: 20,
+                                    ),
                                     children: [
                                       SizedBox(
                                           height: height *
@@ -314,46 +378,9 @@ class _LoginPageState extends State<LoginPage>
                                                             physics:
                                                                 const ClampingScrollPhysics(),
                                                             children: [
+                                                              _buildLoginHero(),
                                                               const SizedBox(
-                                                                  height: 30),
-                                                              const Text(
-                                                                "CONSTRUYE TU NEGOCIO DIGITAL",
-                                                                textAlign:
-                                                                    TextAlign
-                                                                        .center,
-                                                                style:
-                                                                    TextStyle(
-                                                                  color: Colors
-                                                                      .white,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  letterSpacing:
-                                                                      1.2,
-                                                                  fontFamily:
-                                                                      'Poppins',
-                                                                ),
-                                                              ),
-                                                              const SizedBox(
-                                                                  height: 8),
-                                                              const Text(
-                                                                "GANA COMISIONES • ESCALA TU RED",
-                                                                textAlign:
-                                                                    TextAlign
-                                                                        .center,
-                                                                style:
-                                                                    TextStyle(
-                                                                  color: Colors
-                                                                      .white54,
-                                                                  fontSize: 12,
-                                                                  letterSpacing:
-                                                                      2,
-                                                                  fontFamily:
-                                                                      'Poppins',
-                                                                ),
-                                                              ),
-                                                              const SizedBox(
-                                                                  height: 25),
+                                                                  height: 28),
                                                               CustomTextField(
                                                                 textEditingController:
                                                                     loginController
@@ -445,6 +472,11 @@ class _LoginPageState extends State<LoginPage>
                                                                           .white
                                                                           .withOpacity(
                                                                               0.9),
+                                                                      fontSize:
+                                                                          15,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w500,
                                                                     ),
                                                                   ),
                                                                   value: loginController
@@ -468,43 +500,15 @@ class _LoginPageState extends State<LoginPage>
                                                                     ? const Center(
                                                                         child:
                                                                             CustomLoader())
-                                                                    : ElevatedButton(
-                                                                        onPressed:
+                                                                    : _buildPrimaryLoginButton(
+                                                                        width:
+                                                                            width,
+                                                                        onTap:
                                                                             () {
                                                                           loginController.loginUser(
                                                                               context,
                                                                               _formKey);
                                                                         },
-                                                                        style: ElevatedButton
-                                                                            .styleFrom(
-                                                                          padding: const EdgeInsets
-                                                                              .symmetric(
-                                                                              horizontal: 80,
-                                                                              vertical: 15),
-                                                                          shape:
-                                                                              RoundedRectangleBorder(
-                                                                            borderRadius:
-                                                                                BorderRadius.circular(20),
-                                                                          ),
-                                                                          backgroundColor:
-                                                                              const Color(0xFF00FF88),
-                                                                          elevation:
-                                                                              0,
-                                                                        ),
-                                                                        child:
-                                                                            Text(
-                                                                          AppText
-                                                                              .login,
-                                                                          style:
-                                                                              TextStyle(
-                                                                            fontSize:
-                                                                                width * 0.04,
-                                                                            color:
-                                                                                Colors.black,
-                                                                            fontWeight:
-                                                                                FontWeight.bold,
-                                                                          ),
-                                                                        ),
                                                                       ),
                                                               ),
                                                               SizedBox(
@@ -518,45 +522,9 @@ class _LoginPageState extends State<LoginPage>
                                                                 child: loginController
                                                                         .isLoading
                                                                     ? const SizedBox() // Ocultar mientras carga otro proceso
-                                                                    : ElevatedButton
-                                                                        .icon(
-                                                                        onPressed:
-                                                                            () =>
-                                                                                loginController.signInWithGoogle(context),
-                                                                        icon: const FaIcon(
-                                                                            FontAwesomeIcons
-                                                                                .google,
-                                                                            color:
-                                                                                Colors.white,
-                                                                            size: 18),
-                                                                        label:
-                                                                            const Text(
-                                                                          "Continuar con Google",
-                                                                          style:
-                                                                              TextStyle(
-                                                                            color:
-                                                                                Colors.white,
-                                                                            fontWeight:
-                                                                                FontWeight.bold,
-                                                                            fontFamily:
-                                                                                'Poppins',
-                                                                          ),
-                                                                        ),
-                                                                        style: ElevatedButton
-                                                                            .styleFrom(
-                                                                          backgroundColor:
-                                                                              const Color(0xFF4285F4),
-                                                                          padding: const EdgeInsets
-                                                                              .symmetric(
-                                                                              vertical: 15),
-                                                                          shape:
-                                                                              RoundedRectangleBorder(
-                                                                            borderRadius:
-                                                                                BorderRadius.circular(8),
-                                                                          ),
-                                                                          elevation:
-                                                                              0,
-                                                                        ),
+                                                                    : _buildGoogleActionButton(
+                                                                        onTap: () =>
+                                                                            loginController.signInWithGoogle(context),
                                                                       ),
                                                               ),
 
@@ -617,40 +585,6 @@ class _LoginPageState extends State<LoginPage>
                                                     ),
                                                   ),
                                                 ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-
-                                      SizedBox(
-                                          height: height *
-                                              0.03), // Espaciado entre logo y modal
-
-                                      // Logo container above the modal
-                                      Center(
-                                        child: Column(
-                                          children: [
-                                            const SizedBox(
-                                                height:
-                                                    50), // Forzar el logo hacia abajo para evitar corte superior
-                                            Container(
-                                              padding: const EdgeInsets.all(10),
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color:
-                                                        const Color(0xFF00FF88)
-                                                            .withOpacity(0.5),
-                                                    blurRadius: 20,
-                                                    spreadRadius: 5,
-                                                  ),
-                                                ],
-                                              ),
-                                              child: Image.asset(
-                                                'assets/images/ic_launcher.png',
-                                                height: height * 0.15,
                                               ),
                                             ),
                                           ],
@@ -719,6 +653,270 @@ class _LoginPageState extends State<LoginPage>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildLoginHero() {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: const Color(0xFF00FF88).withOpacity(0.16),
+            ),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: <Color>[
+                const Color(0xFF0F1A15).withOpacity(0.9),
+                const Color(0xFF171726).withOpacity(0.55),
+              ],
+            ),
+          ),
+          child: const Text(
+            "ACCESO PREMIUM",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF7CFFCA),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 2.8,
+              fontFamily: 'Poppins',
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+        const Text(
+          "CONSTRUYE TU NEGOCIO DIGITAL",
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.4,
+            fontFamily: 'Poppins',
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          "GANA COMISIONES • ESCALA TU RED",
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.58),
+            fontSize: 12,
+            letterSpacing: 2.4,
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          width: 84,
+          height: 4,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            gradient: const LinearGradient(
+              colors: <Color>[
+                Colors.transparent,
+                Color(0xFF00FF88),
+                Color(0xFFEDFF2E),
+                Colors.transparent,
+              ],
+            ),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: const Color(0xFF00FF88).withOpacity(0.22),
+                blurRadius: 18,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPrimaryLoginButton({
+    required double width,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            Color(0xFF19FFA4),
+            Color(0xFF00FF88),
+            Color(0xFF7CFFCA),
+          ],
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: const Color(0xFF00FF88).withOpacity(0.24),
+            blurRadius: 24,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 17),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.black.withOpacity(0.10),
+              ),
+              child: const Icon(
+                Icons.arrow_forward_rounded,
+                color: Colors.black,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              AppText.login,
+              style: TextStyle(
+                fontSize: width * 0.0405,
+                color: Colors.black,
+                fontWeight: FontWeight.w800,
+                fontFamily: 'Poppins',
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGoogleActionButton({
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            Colors.white.withOpacity(0.98),
+            const Color(0xFFF5F7FB),
+          ],
+        ),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.55),
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: const Color(0xFF4285F4).withOpacity(0.12),
+            blurRadius: 18,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            _GoogleGlyph(),
+            SizedBox(width: 14),
+            Text(
+              "Continuar con Google",
+              style: TextStyle(
+                color: Color(0xFF16181D),
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Poppins',
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GoogleGlyph extends StatelessWidget {
+  const _GoogleGlyph();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 26,
+      height: 26,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: SweepGradient(
+                colors: <Color>[
+                  Color(0xFF4285F4),
+                  Color(0xFF34A853),
+                  Color(0xFFFBBC05),
+                  Color(0xFFEA4335),
+                  Color(0xFF4285F4),
+                ],
+              ),
+            ),
+          ),
+          Container(
+            width: 17,
+            height: 17,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
+          Positioned(
+            right: 1,
+            child: Container(
+              width: 11,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const Text(
+            "G",
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              fontFamily: 'Poppins',
+              color: Color(0xFF4285F4),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

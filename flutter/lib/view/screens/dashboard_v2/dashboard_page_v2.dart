@@ -17,6 +17,7 @@ import 'package:affiliatepro_mobile/view/widgets/ex_affiliate_drawer.dart';
 import 'package:affiliatepro_mobile/view/widgets/ex_fx_background.dart';
 import 'package:affiliatepro_mobile/view/widgets/ex_glass_card.dart';
 import 'package:affiliatepro_mobile/view/widgets/ex_neon_button.dart';
+import 'package:affiliatepro_mobile/view/widgets/ex_remote_image.dart';
 
 class DashboardPageV2 extends StatefulWidget {
   const DashboardPageV2({super.key});
@@ -1030,10 +1031,10 @@ class _AvatarGlow extends StatelessWidget {
         ),
         child: ClipOval(
           child: (avatarUrl != null && avatarUrl!.isNotEmpty)
-              ? Image.network(
-                  avatarUrl!,
+              ? ExRemoteImage(
+                  imageUrl: avatarUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _fallback(initials),
+                  fallback: _fallback(initials),
                 )
               : _fallback(initials),
         ),
@@ -1300,12 +1301,11 @@ class _ToolHighlightCard extends StatelessWidget {
               color: ExFuturisticTheme.primary.withOpacity(0.14),
             ),
             child: tool.feviIcon.isNotEmpty
-                ? ClipRRect(
+                ? ExRemoteImage(
+                    imageUrl: tool.feviIcon,
                     borderRadius: BorderRadius.circular(18),
-                    child: Image.network(
-                      tool.feviIcon,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(
+                    fallback: const Center(
+                      child: Icon(
                         Icons.bolt_rounded,
                         color: ExFuturisticTheme.primary,
                       ),

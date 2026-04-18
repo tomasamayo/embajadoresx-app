@@ -10,6 +10,7 @@ import '../../../../utils/colors.dart';
 import '../../../../utils/text.dart';
 import '../../../controller/login_controller.dart';
 import '../../../controller/main_controller.dart';
+import '../../widgets/ex_remote_image.dart';
 import '../dashboard/components/menu.dart';
 import '../main_container/main_container.dart';
 import 'edit_profile.dart';
@@ -153,11 +154,12 @@ class ProfilePageProfile extends StatelessWidget {
                               child: CircleAvatar(
                                 radius: 50,
                                 backgroundColor: AppColor.appPrimaryLight,
-                                backgroundImage: avatarUrl.isNotEmpty
-                                    ? NetworkImage(avatarUrl)
-                                    : null,
-                                child: avatarUrl.isEmpty
-                                    ? Text(
+                                child: ClipOval(
+                                  child: ExRemoteImage(
+                                    imageUrl: avatarUrl,
+                                    fit: BoxFit.cover,
+                                    fallback: Center(
+                                      child: Text(
                                         _initials(fullName),
                                         style: const TextStyle(
                                           color: AppColor.appPrimary,
@@ -165,8 +167,10 @@ class ProfilePageProfile extends StatelessWidget {
                                           fontWeight: FontWeight.w700,
                                           fontFamily: 'Poppins',
                                         ),
-                                      )
-                                    : null,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                             Container(

@@ -1,14 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:affiliatepro_mobile/controller/dashboard_controller.dart';
 import 'package:affiliatepro_mobile/controller/main_controller.dart';
+import 'package:affiliatepro_mobile/controller/membership_controller.dart';
+import 'package:affiliatepro_mobile/view/screens/Menu/ia_marketing/ia_marketing_screen.dart';
+import 'package:affiliatepro_mobile/view/screens/Menu/log_list/loglist.dart';
+import 'package:affiliatepro_mobile/view/screens/Menu/orders/orders.dart';
+import 'package:affiliatepro_mobile/view/screens/Menu/payment_details/paymentDetail.dart';
+import 'package:affiliatepro_mobile/view/screens/Menu/payments/payments.dart';
+import 'package:affiliatepro_mobile/view/screens/Menu/reports/reports.dart';
+import 'package:affiliatepro_mobile/view/screens/Menu/store/store_page.dart';
 import 'package:affiliatepro_mobile/view/screens/benefits_v2/benefits_page_v2.dart';
+import 'package:affiliatepro_mobile/view/screens/coinx/coinx_wallet_screen.dart';
+import 'package:affiliatepro_mobile/view/screens/dashboard/verification/account_verification_screen.dart';
+import 'package:affiliatepro_mobile/view/screens/membership/membership_buy.dart';
+import 'package:affiliatepro_mobile/view/screens/membership/membership_history.dart';
 import 'package:affiliatepro_mobile/view/screens/notifications/notifications.dart';
-import 'package:affiliatepro_mobile/view/screens/profile/profile.dart';
+import 'package:affiliatepro_mobile/view/screens/academy_screen.dart';
 import 'package:affiliatepro_mobile/view/theme/ex_futuristic_theme.dart';
 import 'package:affiliatepro_mobile/view/widgets/ex_fx_background.dart';
 import 'package:affiliatepro_mobile/view/widgets/ex_glass_card.dart';
+import 'package:affiliatepro_mobile/view/widgets/ex_remote_image.dart';
 
 class ExAffiliateDrawer extends StatelessWidget {
   const ExAffiliateDrawer({super.key});
@@ -31,7 +45,7 @@ class ExAffiliateDrawer extends StatelessWidget {
           fit: StackFit.expand,
           children: <Widget>[
             const ExFxBackground(),
-            Container(color: Colors.black.withOpacity(0.62)),
+            Container(color: Colors.black.withValues(alpha: 0.62)),
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
@@ -91,47 +105,90 @@ class ExAffiliateDrawer extends StatelessWidget {
                         child: ListView(
                           physics: const BouncingScrollPhysics(),
                           children: <Widget>[
-                            ExGlassCard(
-                              radius: 30,
-                              padding: const EdgeInsets.all(16),
-                              borderColor:
-                                  ExFuturisticTheme.primary.withOpacity(0.22),
-                              glowColor: ExFuturisticTheme.primary,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text(
-                                    'Centro de control',
-                                    style: ExFuturisticTheme.overline.copyWith(
-                                      color: ExFuturisticTheme.primarySoft,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  const Text(
-                                    'Accede a tu perfil, beneficios y módulos clave desde una sola capa premium.',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 13,
-                                      height: 1.45,
-                                      fontFamily: 'Poppins',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-                            _SectionLabel(text: 'Principal'),
                             _DrawerItem(
-                              icon: Icons.person_outline_rounded,
-                              label: 'Ver perfil',
+                              icon: Icons.analytics_outlined,
+                              label: 'Mis Reportes',
+                              highlight: true,
                               onTap: () {
                                 Navigator.of(context).pop();
-                                Get.to(() => const ProfilePage());
+                                Get.to(() => const ReportsPage());
+                              },
+                            ),
+                            _DrawerItem(
+                              icon: Icons.list_alt_rounded,
+                              label: 'Lista de Registros',
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                Get.to(() => const LoglistPage());
+                              },
+                            ),
+                            _DrawerItem(
+                              icon: Icons.inventory_2_outlined,
+                              label: 'Mis Pedidos',
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                Get.to(() => const OrdersPage());
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                            _SectionLabel(text: 'Finanzas'),
+                            _DrawerItem(
+                              icon: Icons.toll_rounded,
+                              label: 'Comprar ExCoin',
+                              accentColor: ExFuturisticTheme.primary,
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                Get.to(() => const ExCoinWalletScreen());
+                              },
+                            ),
+                            _DrawerItem(
+                              icon: Icons.account_balance_wallet_outlined,
+                              label: 'Detalles de Pago',
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                Get.to(() => const PaymentDetailPage());
+                              },
+                            ),
+                            _DrawerItem(
+                              icon: Icons.payments_outlined,
+                              label: 'Pagos',
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                Get.to(() => const PaymentsPage());
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                            _SectionLabel(text: 'Herramientas EX'),
+                            _DrawerItem(
+                              icon: Icons.auto_awesome_rounded,
+                              label: 'IA Marketing Center',
+                              accentColor: ExFuturisticTheme.primary,
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                Get.to(() => const IAMarketingScreen());
+                              },
+                            ),
+                            _DrawerItem(
+                              icon: Icons.school_outlined,
+                              label: 'Academia EX',
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                Get.to(() => const AcademyScreen());
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                            _SectionLabel(text: 'Sistema'),
+                            _DrawerItem(
+                              icon: Icons.storefront_outlined,
+                              label: 'Tienda',
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                Get.to(() => const StorePage());
                               },
                             ),
                             _DrawerItem(
                               icon: Icons.workspace_premium_outlined,
-                              label: 'Beneficios EX',
+                              label: 'Beneficios',
                               onTap: () {
                                 Navigator.of(context).pop();
                                 Get.to(() => const BenefitsPageV2());
@@ -145,38 +202,52 @@ class ExAffiliateDrawer extends StatelessWidget {
                                 Get.to(() => const NotificationsPage());
                               },
                             ),
+                            _DrawerItem(
+                              icon: Icons.verified_user_outlined,
+                              label: 'Solicitar Check Azul',
+                              accentColor: ExFuturisticTheme.primary,
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                Get.to(() => const AccountVerificationScreen());
+                              },
+                            ),
                             const SizedBox(height: 8),
-                            _SectionLabel(text: 'Navegación'),
+                            _SectionLabel(text: 'Membresía'),
                             _DrawerItem(
-                              icon: Icons.grid_view_rounded,
-                              label: 'Inicio',
+                              icon: Icons.shopping_cart_outlined,
+                              label: 'Comprar membresía',
                               onTap: () {
+                                _ensureMembershipController(
+                                    dashboardController);
                                 Navigator.of(context).pop();
-                                mainController.changePageIndex(0);
+                                Get.to(() => const MembershipBuyPage());
                               },
                             ),
                             _DrawerItem(
-                              icon: Icons.link_rounded,
-                              label: 'Banners y enlaces',
+                              icon: Icons.history_rounded,
+                              label: 'Historial de compras',
                               onTap: () {
+                                _ensureMembershipController(
+                                    dashboardController);
                                 Navigator.of(context).pop();
-                                mainController.changePageIndex(2);
+                                Get.to(() => const MembershipHistoryPage());
                               },
                             ),
                             _DrawerItem(
-                              icon: Icons.emoji_events_outlined,
-                              label: 'Ranking',
-                              onTap: () {
-                                Navigator.of(context).pop();
-                                mainController.changePageIndex(3);
-                              },
-                            ),
-                            _DrawerItem(
-                              icon: Icons.hub_outlined,
-                              label: 'Mi red',
-                              onTap: () {
-                                Navigator.of(context).pop();
-                                mainController.changePageIndex(4);
+                              icon: Icons.refresh_rounded,
+                              label: 'Restablecer Sugerencias IA',
+                              onTap: () async {
+                                Get.back();
+                                final SharedPreferences prefs =
+                                    await SharedPreferences.getInstance();
+                                await prefs.remove('hide_ai_box_forever');
+                                Get.snackbar(
+                                  'Sugerencias restablecidas',
+                                  'Las sugerencias de IA volverán a mostrarse.',
+                                  backgroundColor: Colors.black87,
+                                  colorText: Colors.white,
+                                  snackPosition: SnackPosition.BOTTOM,
+                                );
                               },
                             ),
                           ],
@@ -187,7 +258,8 @@ class ExAffiliateDrawer extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 10),
                         radius: 22,
-                        borderColor: ExFuturisticTheme.danger.withOpacity(0.18),
+                        borderColor:
+                            ExFuturisticTheme.danger.withValues(alpha: 0.18),
                         child: Row(
                           children: <Widget>[
                             const Icon(Icons.logout_rounded,
@@ -212,6 +284,18 @@ class ExAffiliateDrawer extends StatelessWidget {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Center(
+                        child: Text(
+                          'Versión 1.3.0',
+                          style: TextStyle(
+                            color: Colors.white38,
+                            fontSize: 12,
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
@@ -248,19 +332,39 @@ class _DrawerItem extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.highlight = false,
+    this.accentColor,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final bool highlight;
+  final Color? accentColor;
 
   @override
   Widget build(BuildContext context) {
+    final Color tone =
+        accentColor ?? (highlight ? ExFuturisticTheme.primary : Colors.white);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: ExGlassCard(
         radius: 24,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        borderColor: highlight
+            ? ExFuturisticTheme.primary.withValues(alpha: 0.28)
+            : null,
+        glowColor: highlight ? ExFuturisticTheme.primary : null,
+        gradient: highlight
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  ExFuturisticTheme.primary.withValues(alpha: 0.20),
+                  Colors.white.withValues(alpha: 0.03),
+                ],
+              )
+            : null,
         onTap: onTap,
         child: Row(
           children: <Widget>[
@@ -269,23 +373,27 @@ class _DrawerItem extends StatelessWidget {
               height: 44,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                color: Colors.white.withOpacity(0.05),
+                color: tone.withValues(alpha: highlight ? 0.16 : 0.08),
               ),
-              child: Icon(icon, color: ExFuturisticTheme.primarySoft, size: 22),
+              child: Icon(icon, color: tone, size: 22),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: highlight ? ExFuturisticTheme.primarySoft : tone,
                   fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: highlight ? FontWeight.w700 : FontWeight.w600,
                   fontFamily: 'Poppins',
                 ),
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: Colors.white30),
+            Icon(
+              highlight ? Icons.circle : Icons.chevron_right_rounded,
+              size: highlight ? 10 : 24,
+              color: highlight ? ExFuturisticTheme.primarySoft : Colors.white30,
+            ),
           ],
         ),
       ),
@@ -326,10 +434,10 @@ class _AvatarBadge extends StatelessWidget {
         ),
         child: ClipOval(
           child: (avatarUrl != null && avatarUrl!.isNotEmpty)
-              ? Image.network(
-                  avatarUrl!,
+              ? ExRemoteImage(
+                  imageUrl: avatarUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _fallback(initials),
+                  fallback: _fallback(initials),
                 )
               : _fallback(initials),
         ),
@@ -348,6 +456,15 @@ class _AvatarBadge extends StatelessWidget {
           fontFamily: 'Poppins',
         ),
       ),
+    );
+  }
+}
+
+void _ensureMembershipController(DashboardController dashboardController) {
+  if (!Get.isRegistered<MembershipController>()) {
+    Get.put(
+      MembershipController(preferences: dashboardController.preferences),
+      permanent: true,
     );
   }
 }
