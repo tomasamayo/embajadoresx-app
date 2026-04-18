@@ -1,6 +1,6 @@
-# EMBAJADORES X SaaS Mobile App (Full Source Code)
+# EMBAJADORESX SaaS Mobile App (Full Source Code)
 
-This is the official Flutter source code for the AffiliatePro mobile application.  
+This is the official Flutter source code for the EMBAJADORESX mobile application.  
 You can customize the app with your own domain and license key, and build your own APK to install or publish.
 
 ## 📄 Historial de Versiones
